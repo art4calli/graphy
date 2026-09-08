@@ -1163,7 +1163,7 @@ export default function RegistrationModal({
         const stored = localStorage.getItem("thnoon_subscriber_email_config");
         if (stored) cachedEmailConfig = JSON.parse(stored);
       } catch (e) {}
-      if (!cachedEmailConfig) {
+      if (!cachedEmailConfig || !cachedEmailConfig.senderName) {
         cachedEmailConfig = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
       }
 
@@ -1172,7 +1172,7 @@ export default function RegistrationModal({
         const storedTel = localStorage.getItem("thnoon_telegram_config");
         if (storedTel) cachedTelegramConfig = JSON.parse(storedTel);
       } catch (e) {}
-      if (!cachedTelegramConfig) {
+      if (!cachedTelegramConfig || !cachedTelegramConfig.botToken || !cachedTelegramConfig.chatId) {
         cachedTelegramConfig = DEFAULT_TELEGRAM_CONFIG;
       }
 

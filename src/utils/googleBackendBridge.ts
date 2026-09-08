@@ -269,7 +269,7 @@ export async function fetchTelegramConfigBridge(
     }
   } catch (sheetErr) {}
 
-  // 3. Fallback to localStorage
+  // 3. Fallback to localStorage or default verified config
   if (typeof window !== "undefined") {
     try {
       const local = localStorage.getItem("thnoon_telegram_config");
@@ -277,7 +277,7 @@ export async function fetchTelegramConfigBridge(
     } catch (err) {}
   }
 
-  return null;
+  return DEFAULT_TELEGRAM_CONFIG;
 }
 
 /**

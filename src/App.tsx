@@ -166,6 +166,16 @@ export default function App() {
         if (localSheet && localSheet.trim()) setCurrentSpreadsheetId(localSheet.trim());
         if (localFolder && localFolder.trim()) setCurrentDriveFolderId(localFolder.trim());
       }
+      // Also prefetch telegram config so mobile/tablet devices have instant config
+      try {
+        const telRes = await fetch("/api/telegram-config");
+        if (telRes.ok) {
+          const telData = await telRes.json();
+          if (telData && telData.config && telData.config.botToken) {
+            localStorage.setItem("thnoon_telegram_config", JSON.stringify(telData.config));
+          }
+        }
+      } catch (telE) {}
     };
     fetchConfig();
 

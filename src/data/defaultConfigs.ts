@@ -53,9 +53,9 @@ export const DEFAULT_SUBSCRIBER_EMAIL_CONFIG = {
 };
 
 export const DEFAULT_TELEGRAM_CONFIG = {
-  enabled: false,
-  botToken: "",
-  chatId: "",
+  enabled: true,
+  botToken: "8777153005:AAF48_X1uMzhJLlJhWcJndLmuY402SZZmzA",
+  chatId: "5371796147",
   topicId: "",
   notificationTitle: "🔔 إشعار تسجيل جديد - مؤسسة يوسف ذنون",
   includeAllAnswers: true,
@@ -63,6 +63,13 @@ export const DEFAULT_TELEGRAM_CONFIG = {
   includeAttachment: true,
   includeWhatsappButton: true,
   includeSheetButton: true,
+  customButtons: [
+    {
+      id: "btn_1787919188092",
+      text: "رابط جديد",
+      url: "https://drive.google.com/file/d/1vukeCKi_3QS3nIOXCAUS1_-Q3oHRZ2uT/view?usp=drive_link"
+    }
+  ],
   customHeader: "🏛️ مؤسسة يوسف ذنون للخط العربي",
   customFooter: "⚡ نظام المتابعة الفورية للإدارة"
 };
