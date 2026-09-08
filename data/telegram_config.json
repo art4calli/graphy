@@ -1,0 +1,14 @@
+{
+  "enabled": false,
+  "botToken": "",
+  "chatId": "",
+  "topicId": "",
+  "notificationTitle": "🔔 إشعار تسجيل جديد - مؤسسة يوسف ذنون",
+  "includeAllAnswers": true,
+  "includeQrCode": true,
+  "includeAttachment": true,
+  "includeWhatsappButton": true,
+  "includeSheetButton": true,
+  "customHeader": "🏛️ مؤسسة يوسف ذنون للخط العربي",
+  "customFooter": "⚡ نظام المتابعة الفورية للادارة"
+}

@@ -1,0 +1,116 @@
+[
+  {
+    "id": 1,
+    "question": "الاسم",
+    "description": "يرجى كتابة اسمك الكامل كما هو مدون في الهوية",
+    "type": "text",
+    "required": true
+  },
+  {
+    "id": 2,
+    "question": "الاسم بالعربي",
+    "description": "اسمك الكريم باللغة العربية (إن وُجد)",
+    "type": "text",
+    "required": true
+  },
+  {
+    "id": 3,
+    "question": "العمر",
+    "description": "العمر بالسنوات (أرقام فقط)",
+    "type": "number",
+    "required": true
+  },
+  {
+    "id": 4,
+    "question": "رقم الهاتف",
+    "description": "رقم الهاتف أو الواتساب مع مفتاح الدولة",
+    "type": "phone",
+    "required": true
+  },
+  {
+    "id": 5,
+    "question": "ايميل",
+    "description": "بريدك الإلكتروني المعتمد لاستلام الإشعار",
+    "type": "email",
+    "required": true
+  },
+  {
+    "id": 6,
+    "question": "ID Line",
+    "description": "معرف تطبيق لاين الخاص بك للتواصل السريع",
+    "type": "text",
+    "required": false,
+    "imageUrl": "https://lh3.googleusercontent.com/d/1wUPfYMrl3t6j0RPaw6Vk-WiqAaECbSNQ"
+  },
+  {
+    "id": 7,
+    "question": "افتح ملف بي دي اف",
+    "type": "button_link",
+    "required": false,
+    "externalLink": "https://drive.google.com/thumbnail?id=1wUPfYMrl3t6j0RPaw6Vk-WiqAaECbSNQ&sz=w1201"
+  },
+  {
+    "id": 8,
+    "question": "فيس بوك",
+    "description": "رابط أو اسم حسابك على فيسبوك",
+    "type": "text",
+    "required": false,
+    "externalLink": "https://drive.google.com/thumbnail?id=1wUPfYMrl3t6j0RPaw6Vk-WiqAaECbSNQ&sz=w1201"
+  },
+  {
+    "id": 9,
+    "question": "هل تحب الخط العربي؟",
+    "description": "اختر الإجابة المناسبة لمستواك",
+    "type": "choice",
+    "options": [
+      "✅ نعم = เคย",
+      "❌ لا = ไม่เคย"
+    ],
+    "required": true
+  },
+  {
+    "id": 10,
+    "question": "ما اسم استاذك الذي علمك الخط؟",
+    "description": "اسم الخطاط أو المعلم الذي تعلمت على يديه",
+    "type": "text",
+    "required": false
+  },
+  {
+    "id": 11,
+    "question": "هل تعرفين انوان الخط",
+    "description": "1",
+    "type": "choice",
+    "options": [
+      "✅ نعم = เคย",
+      "❌ لا = ไม่เคย"
+    ],
+    "required": true
+  },
+  {
+    "id": 12,
+    "question": "هل تحب الفن",
+    "description": "2",
+    "type": "text",
+    "required": false
+  },
+  {
+    "id": 13,
+    "question": "صورة",
+    "type": "image_display",
+    "required": false,
+    "imageUrl": "https://lh3.googleusercontent.com/d/1wUPfYMrl3t6j0RPaw6Vk-WiqAaECbSNQ"
+  },
+  {
+    "id": 14,
+    "question": "رفع ملف",
+    "type": "file",
+    "required": false
+  },
+  {
+    "id": 15,
+    "question": "افتح ملف بي دي اف",
+    "type": "button_link",
+    "required": false,
+    "externalLink": "https://drive.google.com/thumbnail?id=1wUPfYMrl3t6j0RPaw6Vk-WiqAaECbSNQ&sz=w1201"
+  }
+]
