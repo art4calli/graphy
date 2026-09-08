@@ -3805,6 +3805,13 @@ app.post("/api/register", async (req, res) => {
 
     // Load active subscriber email config and merge with any provided client config
     const activeEmailConfig = loadSubscriberEmailConfig();
+    let clientAttachments = registrationData.emailConfig && registrationData.emailConfig.attachments;
+    if (Array.isArray(clientAttachments) && clientAttachments.length > 0) {
+      if (clientAttachments.some((a: any) => a && a.url && a.url.includes("unsplash"))) {
+        clientAttachments = null;
+      }
+    }
+
     const mergedEmailConfig = {
       ...activeEmailConfig,
       ...(registrationData.emailConfig || {}),
@@ -3815,8 +3822,8 @@ app.post("/api/register", async (req, res) => {
       dataFields: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.dataFields) && registrationData.emailConfig.dataFields.length > 0)
         ? registrationData.emailConfig.dataFields
         : (activeEmailConfig.dataFields || []),
-      attachments: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.attachments) && registrationData.emailConfig.attachments.length > 0)
-        ? registrationData.emailConfig.attachments
+      attachments: (clientAttachments && clientAttachments.length > 0)
+        ? clientAttachments
         : (activeEmailConfig.attachments || []),
       driveFolderId: currentDriveFolderId,
       qrDriveUrlColumn: "O",

@@ -38,7 +38,7 @@ export const DEFAULT_SUBSCRIBER_EMAIL_CONFIG = {
       title: "دليل المشترك ومنهاج الدورات (PDF)",
       titleEn: "Subscriber Guide & Curriculum (PDF)",
       titleTh: "คู่มือสมาชิกและหลักสูตร (PDF)",
-      url: "https://drive.google.com/file/d/1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7/view",
+      url: "https://drive.google.com/file/d/1vukeCKi_3QS3nIOXCAUS1_-Q3oHRZ2uT/view?usp=drive_link",
       type: "file_button"
     },
     {
@@ -46,7 +46,15 @@ export const DEFAULT_SUBSCRIBER_EMAIL_CONFIG = {
       title: "شعار وبطاقة عضوية المؤسسة",
       titleEn: "Institute Badge & Emblem",
       titleTh: "ตราสัญลักษณ์บัตรสมาชิก",
-      url: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80",
+      url: "https://drive.google.com/file/d/1A-BriZ8TuL5Ua1lHyrmssB6WjtWX9O1z/view?usp=drive_link",
+      type: "image"
+    },
+    {
+      id: "1788877999615",
+      title: "مرفق جديد",
+      titleEn: "New Attachment",
+      titleTh: "เอกสารแนบใหม่",
+      url: "https://drive.google.com/file/d/1AWN0tKboI0bxICu-8awV-q8nxU7hSy8z/view?usp=drive_link",
       type: "image"
     }
   ]

@@ -176,6 +176,16 @@ export default function App() {
           }
         }
       } catch (telE) {}
+      // Also prefetch subscriber email config so all devices have active attachments
+      try {
+        const emailConfRes = await fetch("/api/subscriber-email-config");
+        if (emailConfRes.ok) {
+          const emailConfData = await emailConfRes.json();
+          if (emailConfData && emailConfData.config && Array.isArray(emailConfData.config.attachments)) {
+            localStorage.setItem("thnoon_subscriber_email_config", JSON.stringify(emailConfData.config));
+          }
+        }
+      } catch (emE) {}
     };
     fetchConfig();
 

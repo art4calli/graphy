@@ -1118,11 +1118,17 @@ function testSubscriberEmailService(postData) {
 function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeaders, customEmailConfig) {
   try {
     var emailConfig = customEmailConfig;
-    if (!emailConfig || Object.keys(emailConfig).length === 0) {
+    if (!emailConfig || Object.keys(emailConfig).length === 0 || !emailConfig.attachments || emailConfig.attachments.length === 0) {
       try {
         var savedEmailStr = PropertiesService.getScriptProperties().getProperty("SUBSCRIBER_EMAIL_CONFIG");
         if (savedEmailStr) {
-          emailConfig = JSON.parse(savedEmailStr);
+          var parsedSaved = JSON.parse(savedEmailStr);
+          if (parsedSaved && typeof parsedSaved === "object") {
+            emailConfig = Object.assign({}, parsedSaved, emailConfig || {});
+            if (!emailConfig.attachments || emailConfig.attachments.length === 0) {
+              emailConfig.attachments = parsedSaved.attachments;
+            }
+          }
         }
       } catch (e) {}
     }
@@ -1338,13 +1344,13 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
     }
 
     // بناء المرفقات والروابط والملفات المرفقة فعلياً بالإيميل
-    var attachments = (emailConfig.attachments && emailConfig.attachments.length > 0) ? emailConfig.attachments : [
+    var defaultVerifiedAttachments = [
       {
         id: "1",
         title: "دليل المشترك ومنهاج الدورات (PDF)",
         titleEn: "Subscriber Guide & Curriculum (PDF)",
         titleTh: "คู่มือสมาชิกและหลักสูตร (PDF)",
-        url: "https://drive.google.com/file/d/1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7/view",
+        url: "https://drive.google.com/file/d/1vukeCKi_3QS3nIOXCAUS1_-Q3oHRZ2uT/view?usp=drive_link",
         type: "file_button"
       },
       {
@@ -1352,10 +1358,29 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
         title: "شعار وبطاقة عضوية المؤسسة",
         titleEn: "Institute Badge & Emblem",
         titleTh: "ตราสัญลักษณ์บัตรสมาชิก",
-        url: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80",
+        url: "https://drive.google.com/file/d/1A-BriZ8TuL5Ua1lHyrmssB6WjtWX9O1z/view?usp=drive_link",
+        type: "image"
+      },
+      {
+        id: "1788877999615",
+        title: "مرفق جديد",
+        titleEn: "New Attachment",
+        titleTh: "เอกสารแนบใหม่",
+        url: "https://drive.google.com/file/d/1AWN0tKboI0bxICu-8awV-q8nxU7hSy8z/view?usp=drive_link",
         type: "image"
       }
     ];
+
+    var rawAtts = (emailConfig.attachments && emailConfig.attachments.length > 0) ? emailConfig.attachments : defaultVerifiedAttachments;
+    var attachments = [];
+    for (var attk = 0; attk < rawAtts.length; attk++) {
+      if (rawAtts[attk] && rawAtts[attk].url && rawAtts[attk].url.indexOf("unsplash") === -1) {
+        attachments.push(rawAtts[attk]);
+      }
+    }
+    if (attachments.length === 0) {
+      attachments = defaultVerifiedAttachments;
+    }
     var attachmentsHtml = "";
     var emailFileBlobs = [];
     var inlineImagesMap = {};
@@ -1403,6 +1428,28 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
           }
         } catch(dErr) {
           Logger.log("Drive getFileById note: " + dErr.message);
+          try {
+            var dlUrl = "https://drive.google.com/uc?export=download&id=" + driveId;
+            var fetched = UrlFetchApp.fetch(dlUrl, { muteHttpExceptions: true });
+            if (fetched.getResponseCode() === 200) {
+              var fetchedBlob = fetched.getBlob();
+              var mime = (fetchedBlob.getContentType() || "").toLowerCase();
+              var ext = mime.indexOf("png") !== -1 ? ".png" : (mime.indexOf("pdf") !== -1 ? ".pdf" : (mime.indexOf("jpeg") !== -1 || mime.indexOf("jpg") !== -1 ? ".jpg" : ""));
+              var cleanName = attTitle;
+              if (ext && cleanName.indexOf(ext) === -1 && cleanName.indexOf(".") === -1) {
+                cleanName += ext;
+              }
+              fetchedBlob.setName(cleanName);
+              if (isImg && mime.indexOf("image") !== -1) {
+                imgBlob = fetchedBlob;
+              } else {
+                fileBlob = fetchedBlob;
+                isImg = false;
+              }
+            }
+          } catch(dlErr) {
+            Logger.log("UrlFetchApp drive download note: " + dlErr.message);
+          }
         }
       }
 

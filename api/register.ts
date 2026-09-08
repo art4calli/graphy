@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../src/data/defaultConfigs";
 
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbza2PFARh0xlhXbxvsMQo0cije7GbPKsSuDlOB17bTEPkH9IUWWWzxBh7JEKjag-y80Ww/exec";
@@ -222,19 +224,40 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    let activeEmailConfig = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+    try {
+      const emailConfigFile = path.join(process.cwd(), "data", "subscriber_email_config.json");
+      if (fs.existsSync(emailConfigFile)) {
+        const parsed = JSON.parse(fs.readFileSync(emailConfigFile, "utf-8"));
+        if (parsed && typeof parsed === "object") {
+          activeEmailConfig = {
+            ...DEFAULT_SUBSCRIBER_EMAIL_CONFIG,
+            ...parsed
+          };
+        }
+      }
+    } catch (e) {}
+
+    let clientAttachments = registrationData.emailConfig && registrationData.emailConfig.attachments;
+    if (Array.isArray(clientAttachments) && clientAttachments.length > 0) {
+      if (clientAttachments.some((a: any) => a && a.url && a.url.includes("unsplash"))) {
+        clientAttachments = null;
+      }
+    }
+
     const mergedEmailConfig = {
-      ...DEFAULT_SUBSCRIBER_EMAIL_CONFIG,
+      ...activeEmailConfig,
       ...(registrationData.emailConfig || {}),
       messages: {
-        ...DEFAULT_SUBSCRIBER_EMAIL_CONFIG.messages,
+        ...activeEmailConfig.messages,
         ...((registrationData.emailConfig && registrationData.emailConfig.messages) || {})
       },
       dataFields: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.dataFields) && registrationData.emailConfig.dataFields.length > 0)
         ? registrationData.emailConfig.dataFields
-        : DEFAULT_SUBSCRIBER_EMAIL_CONFIG.dataFields,
-      attachments: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.attachments) && registrationData.emailConfig.attachments.length > 0)
-        ? registrationData.emailConfig.attachments
-        : DEFAULT_SUBSCRIBER_EMAIL_CONFIG.attachments,
+        : activeEmailConfig.dataFields,
+      attachments: (clientAttachments && clientAttachments.length > 0)
+        ? clientAttachments
+        : activeEmailConfig.attachments,
       driveFolderId: targetFolderId,
       qrDriveUrlColumn: "O",
       deliveryStatusColumn: "P",

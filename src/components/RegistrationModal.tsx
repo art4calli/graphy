@@ -1163,8 +1163,11 @@ export default function RegistrationModal({
         const stored = localStorage.getItem("thnoon_subscriber_email_config");
         if (stored) cachedEmailConfig = JSON.parse(stored);
       } catch (e) {}
-      if (!cachedEmailConfig || !cachedEmailConfig.senderName) {
+      if (!cachedEmailConfig || typeof cachedEmailConfig !== "object" || !cachedEmailConfig.messages) {
         cachedEmailConfig = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+      }
+      if (!cachedEmailConfig.attachments || !Array.isArray(cachedEmailConfig.attachments) || cachedEmailConfig.attachments.length === 0 || cachedEmailConfig.attachments.some((a: any) => a?.url?.includes("unsplash"))) {
+        cachedEmailConfig.attachments = DEFAULT_SUBSCRIBER_EMAIL_CONFIG.attachments;
       }
 
       let cachedTelegramConfig: any = null;
