@@ -31,6 +31,7 @@ import {
 import { RegistrationQuestion, QuestionTranslation } from "../types";
 import { DEFAULT_FORM_TRANSLATIONS } from "../data/defaultFormTranslations";
 import { getSavedFormQuestions, DEFAULT_CONFIGURED_QUESTIONS } from "../data/configuredFormQuestions";
+import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
 import { formatImageUrl } from "../utils/imageUtils";
 import {
   submitRegistrationBridge,
@@ -1162,12 +1163,18 @@ export default function RegistrationModal({
         const stored = localStorage.getItem("thnoon_subscriber_email_config");
         if (stored) cachedEmailConfig = JSON.parse(stored);
       } catch (e) {}
+      if (!cachedEmailConfig) {
+        cachedEmailConfig = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+      }
 
       let cachedTelegramConfig: any = null;
       try {
         const storedTel = localStorage.getItem("thnoon_telegram_config");
         if (storedTel) cachedTelegramConfig = JSON.parse(storedTel);
       } catch (e) {}
+      if (!cachedTelegramConfig) {
+        cachedTelegramConfig = DEFAULT_TELEGRAM_CONFIG;
+      }
 
       const regPayload = {
         registrationId: unifiedRegId,
@@ -1185,8 +1192,8 @@ export default function RegistrationModal({
         formLang: formLang || "ar",
         scriptUrl: activeScriptUrl,
         timestamp: formattedTimestamp,
-        emailConfig: cachedEmailConfig || undefined,
-        telegramConfig: cachedTelegramConfig || undefined
+        emailConfig: cachedEmailConfig,
+        telegramConfig: cachedTelegramConfig
       };
 
       // If attachment is a data: URL, ensure it uploads to Google Drive or format cleanly

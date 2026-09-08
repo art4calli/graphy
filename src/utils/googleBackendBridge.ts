@@ -13,8 +13,9 @@
 
 import { RegistrationQuestion, RegistrationAnswerRecord, SettingsSubscriberRecord, TelegramConfig, SubscriberEmailConfig, SubscriberTopicContent, SubscriberCard } from "../types";
 import { formatImageUrl } from "./imageUtils";
+import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbya5dsTaDiqKID1esLzFqOdr-vldb9sc1BZWl5j2Y06wcH-YOeWagkXsy_xTjKJqqKNIw/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbza2PFARh0xlhXbxvsMQo0cije7GbPKsSuDlOB17bTEPkH9IUWWWzxBh7JEKjag-y80Ww/exec";
 export const DEFAULT_SPREADSHEET_ID = "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 export const DEFAULT_DRIVE_FOLDER_ID = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
 
@@ -403,17 +404,23 @@ export async function submitRegistrationBridge(
       if (stored) emailConfig = JSON.parse(stored);
     } catch (e) {}
   }
+  if (!emailConfig) {
+    emailConfig = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+  }
 
   let telegramConfig = regPayload.telegramConfig;
   if (!telegramConfig) {
-    telegramConfig = await fetchTelegramConfigBridge();
+    telegramConfig = await fetchTelegramConfigBridge().catch(() => DEFAULT_TELEGRAM_CONFIG);
+  }
+  if (!telegramConfig) {
+    telegramConfig = DEFAULT_TELEGRAM_CONFIG;
   }
 
   const enrichedPayload = {
     ...regPayload,
     scriptUrl: targetScriptUrl,
-    emailConfig: emailConfig || undefined,
-    telegramConfig: telegramConfig || undefined
+    emailConfig: emailConfig,
+    telegramConfig: telegramConfig
   };
 
   const regId = enrichedPayload.registrationId || `REG-${Date.now().toString().slice(-6)}`;

@@ -1,0 +1,299 @@
+[
+  {
+    "registrationId": "202692333",
+    "name": "مستخدم تجريبي",
+    "email": "test@example.com",
+    "answers": [
+      {
+        "question": "الاسم",
+        "answer": "مستخدم تجريبي"
+      }
+    ],
+    "timestamp": "2026/09/08 - 11:15",
+    "emailConfig": {
+      "enabled": true,
+      "emailColumn": "G",
+      "deliveryStatusColumn": "P",
+      "dataFields": [
+        {
+          "id": "1",
+          "label": "رقم التسجيل",
+          "labelEn": "Registration ID",
+          "labelTh": "หมายเลขลงทะเบียน",
+          "columnLetter": "B"
+        },
+        {
+          "id": "2",
+          "label": "اسم المشترك",
+          "labelEn": "Participant Name",
+          "labelTh": "ชื่อผู้สมัคร",
+          "columnLetter": "C"
+        },
+        {
+          "id": "3",
+          "label": "تاريخ ووقت التسجيل",
+          "labelEn": "Registration Date & Time",
+          "labelTh": "วันและเวลาที่ลงทะเบียน",
+          "columnLetter": "A"
+        },
+        {
+          "id": "4",
+          "label": "رقم الهاتف / الواتساب",
+          "labelEn": "Phone / WhatsApp",
+          "labelTh": "เบอร์โทรศัพท์ / WhatsApp",
+          "columnLetter": "F"
+        },
+        {
+          "id": "5",
+          "label": "رابط الدخول لصفحة الاشتراك",
+          "labelEn": "Login / Courses Portal",
+          "labelTh": "ลิงก์เข้าสู่ระบบบทเรียน",
+          "columnLetter": "LOGIN_URL"
+        }
+      ],
+      "qrCodeColumns": "B",
+      "qrDriveUrlColumn": "O",
+      "includeQrInEmail": true,
+      "messages": {
+        "ar": {
+          "subject": "تأكيد تسجيلك في منصة مؤسسة يوسف ذنون - بيانات الدخول والاشتراك",
+          "header": "مرحباً بك في مؤسسة يوسف ذنون للخط العربي",
+          "body": "نشكرك على تسجيلك واهتمامك بتعلم وإتقان فنون الخط العربي الأصيل. فيما يلي تفاصيل وبيانات تسجيلك المعتمدة للدخول ومتابعة الدورات والمحتوى الحصري:",
+          "footerNote": "يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code) وبيانات التسجيل لاستخدامها عند مراجعة اشتراكك أو حضور الجلسات."
+        },
+        "en": {
+          "subject": "Registration Confirmation - Yousuf Dhannoon Calligraphy Portal",
+          "header": "Welcome to Yousuf Dhannoon Calligraphy Institute",
+          "body": "Thank you for registering. Below are your verified registration details and access credentials to explore your courses and exclusive content:",
+          "footerNote": "Please keep this QR Code and your registration ID handy for subscription verification and session access."
+        },
+        "th": {
+          "subject": "ยืนยันการลงทะเบียน - สถาบันศิลปะการเขียนตัวอักษรอาหรับ ยูซุฟ ซันนูน",
+          "header": "ยินดีต้อนรับสู่ สถาบันยูซุฟ ซันนูน สำหรับการเขียนอักษรอาหรับ",
+          "body": "ขอขอบคุณสำหรับการลงทะเบียน รายละเอียดข้อมูลการสมัครและข้อมูลสำหรับเข้าสู่ระบบบทเรียนของคุณมีดังนี้:",
+          "footerNote": "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์และการเข้าเรียน"
+        }
+      },
+      "attachments": [
+        {
+          "id": "1",
+          "title": "دليل المشترك ومنهاج الدورات (PDF)",
+          "titleEn": "Subscriber Guide & Curriculum (PDF)",
+          "titleTh": "คู่มือสมาชิกและหลักสูตร (PDF)",
+          "url": "https://drive.google.com/file/d/1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7/view",
+          "type": "file_button"
+        },
+        {
+          "id": "2",
+          "title": "شعار وبطاقة عضوية المؤسسة",
+          "titleEn": "Institute Badge & Emblem",
+          "titleTh": "ตราสัญลักษณ์บัตรสมาชิก",
+          "url": "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80",
+          "type": "image"
+        }
+      ],
+      "driveFolderId": "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7"
+    }
+  },
+  {
+    "registrationId": "202696681",
+    "topicId": 1,
+    "topic": 1,
+    "name": "h",
+    "nameArabic": "ht",
+    "age": "55",
+    "email": "shyk4test2020@gmail.com",
+    "phone": "0980877542",
+    "lineId": "hj",
+    "facebook": "gj",
+    "attachment": "https://drive.google.com/file/d/14k8tECsaBJFZIbqd2_0Viol4Qy2rz6NT/view?usp=sharing",
+    "answers": [
+      {
+        "questionId": 1,
+        "question": "الاسم",
+        "type": "text",
+        "answer": "h"
+      },
+      {
+        "questionId": 2,
+        "question": "الاسم بالعربي",
+        "type": "text",
+        "answer": "ht"
+      },
+      {
+        "questionId": 3,
+        "question": "العمر",
+        "type": "number",
+        "answer": "55"
+      },
+      {
+        "questionId": 4,
+        "question": "رقم الهاتف",
+        "type": "phone",
+        "answer": "0980877542"
+      },
+      {
+        "questionId": 5,
+        "question": "ايميل",
+        "type": "email",
+        "answer": "shyk4test2020@gmail.com"
+      },
+      {
+        "questionId": 6,
+        "question": "ID Line",
+        "type": "text",
+        "answer": "hj"
+      },
+      {
+        "questionId": 8,
+        "question": "فيس بوك",
+        "type": "text",
+        "answer": "gj"
+      },
+      {
+        "questionId": 9,
+        "question": "هل تحب الخط العربي؟",
+        "type": "choice",
+        "answer": "❌ لا = ไม่เคย"
+      },
+      {
+        "questionId": 10,
+        "question": "ما اسم استاذك الذي علمك الخط؟",
+        "type": "text",
+        "answer": "ggj"
+      },
+      {
+        "questionId": 11,
+        "question": "هل تعرفين انوان الخط",
+        "type": "choice",
+        "answer": "❌ لا = ไม่เคย"
+      },
+      {
+        "questionId": 12,
+        "question": "هل تحب الفن",
+        "type": "text",
+        "answer": "gh"
+      },
+      {
+        "questionId": 14,
+        "question": "رفع ملف",
+        "type": "file",
+        "answer": "https://drive.google.com/file/d/14k8tECsaBJFZIbqd2_0Viol4Qy2rz6NT/view?usp=sharing"
+      }
+    ],
+    "formLang": "ar",
+    "scriptUrl": "https://script.google.com/macros/s/AKfycbya5dsTaDiqKID1esLzFqOdr-vldb9sc1BZWl5j2Y06wcH-YOeWagkXsy_xTjKJqqKNIw/exec",
+    "timestamp": "2026/09/08 - 09:21",
+    "emailConfig": {
+      "enabled": true,
+      "emailColumn": "G",
+      "deliveryStatusColumn": "P",
+      "dataFields": [
+        {
+          "id": "1",
+          "label": "رقم التسجيل",
+          "labelEn": "Registration ID",
+          "labelTh": "หมายเลขลงทะเบียน",
+          "columnLetter": "B"
+        },
+        {
+          "id": "2",
+          "label": "اسم المشترك",
+          "labelEn": "Participant Name",
+          "labelTh": "ชื่อผู้สมัคร",
+          "columnLetter": "C"
+        },
+        {
+          "id": "3",
+          "label": "تاريخ ووقت التسجيل",
+          "labelEn": "Registration Date & Time",
+          "labelTh": "วันและเวลาที่ลงทะเบียน",
+          "columnLetter": "A"
+        },
+        {
+          "id": "4",
+          "label": "رقم الهاتف / الواتساب",
+          "labelEn": "Phone / WhatsApp",
+          "labelTh": "เบอร์โทรศัพท์ / WhatsApp",
+          "columnLetter": "F"
+        },
+        {
+          "id": "5",
+          "label": "رابط الدخول لصفحة الاشتراك",
+          "labelEn": "Login / Courses Portal",
+          "labelTh": "ลิงก์เข้าสู่ระบบบทเรียน",
+          "columnLetter": "LOGIN_URL"
+        }
+      ],
+      "qrCodeColumns": "B, C",
+      "qrDriveUrlColumn": "O",
+      "includeQrInEmail": true,
+      "messages": {
+        "ar": {
+          "subject": "تأكيد تسجيلك في منصة مؤسسة يوسف ذنون - بيانات الدخول والاشتراك",
+          "header": "مرحباً بك في مؤسسة يوسف ذنون للخط العربي",
+          "body": "نشكرك على تسجيلك واهتمامك بتعلم وإتقان فنون الخط العربي الأصيل. فيما يلي تفاصيل وبيانات تسجيلك المعتمدة للدخول ومتابعة الدورات والمحتوى الحصري:",
+          "footerNote": "يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code) وبيانات التسجيل لاستخدامها عند مراجعة اشتراكك أو حضور الجلسات."
+        },
+        "en": {
+          "subject": "Registration Confirmation - Yousuf Dhannoon Calligraphy Portal",
+          "header": "Welcome to Yousuf Dhannoon Calligraphy Institute",
+          "body": "Thank you for registering. Below are your verified registration details and access credentials to explore your courses and exclusive content:",
+          "footerNote": "Please keep this QR Code and your registration ID handy for subscription verification and session access."
+        },
+        "th": {
+          "subject": "ยืนยันการลงทะเบียน - สถาบันศิลปะการเขียนตัวอักษรอาหรับ ยูซุฟ ซันนูน",
+          "header": "ยินดีต้อนรับสู่ สถาบันยูซุฟ ซันนูน สำหรับการเขียนอักษรอาหรับ",
+          "body": "ขอขอบคุณสำหรับการลงทะเบียน รายละเอียดข้อมูลการสมัครและข้อมูลสำหรับเข้าสู่ระบบบทเรียนของคุณมีดังนี้:",
+          "footerNote": "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์และการเข้าเรียน"
+        }
+      },
+      "attachments": [
+        {
+          "id": "1",
+          "title": "دليل المشترك ومنهاج الدورات (PDF)",
+          "titleEn": "Subscriber Guide & Curriculum (PDF)",
+          "titleTh": "คู่มือสมาชิกและหลักสูตร (PDF)",
+          "url": "https://drive.google.com/file/d/1vukeCKi_3QS3nIOXCAUS1_-Q3oHRZ2uT/view?usp=drive_link",
+          "type": "file_button"
+        },
+        {
+          "id": "2",
+          "title": "شعار وبطاقة عضوية المؤسسة",
+          "titleEn": "Institute Badge & Emblem",
+          "titleTh": "ตราสัญลักษณ์บัตรสมาชิก",
+          "url": "https://drive.google.com/file/d/1A-BriZ8TuL5Ua1lHyrmssB6WjtWX9O1z/view?usp=drive_link",
+          "type": "image"
+        },
+        {
+          "id": "1787915375310",
+          "title": "مرفق جديد",
+          "url": "https://drive.google.com/file/d/1AWN0tKboI0bxICu-8awV-q8nxU7hSy8z/view?usp=drive_link",
+          "type": "image"
+        }
+      ],
+      "driveFolderId": "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7"
+    },
+    "telegramConfig": {
+      "enabled": true,
+      "botToken": "8777153005:AAF48_X1uMzhJLlJhWcJndLmuY402SZZmzA",
+      "chatId": "5371796147",
+      "topicId": "",
+      "notificationTitle": "🔔 إشعار تسجيل جديد - مؤسسة يوسف ذنون",
+      "includeAllAnswers": true,
+      "includeQrCode": true,
+      "includeAttachment": true,
+      "customButtons": [
+        {
+          "id": "btn_1787919188092",
+          "text": "رابط جديد",
+          "url": "https://drive.google.com/file/d/1vukeCKi_3QS3nIOXCAUS1_-Q3oHRZ2uT/view?usp=drive_link"
+        }
+      ],
+      "customHeader": "🏛️ مؤسسة يوسف ذنون للخط العربي",
+      "customFooter": "⚡ نظام المتابعة الفورية للادارة",
+      "includeWhatsappButton": true,
+      "includeSheetButton": true
+    }
+  }
+]

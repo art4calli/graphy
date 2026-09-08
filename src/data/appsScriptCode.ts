@@ -801,36 +801,58 @@ function submitRegistration(data) {
       sheet.getRange(lastRow, 2).setHorizontalAlignment("center").setFontWeight("bold");
     }
 
-    // 9. التأكد من وجود أعمدة الـ QR Code وحالة الإرسال وتنسيقها
+    // 9. التأكد من وجود أعمدة الـ QR Code وحالة الإرسال وتنسيقها بدقة تامة ومنع تكرار الأعمدة
     var qrColIdx = 0;
     var statusColIdx = 0;
+    var duplicateHeadersToClean = [];
 
-    // البحث في الأعمدة الحالية أولاً
+    // فحص كافة الأعمدة الحالية في الصف الأول
     for (var chk = 0; chk < currentHeaders.length; chk++) {
-      var headTxt = currentHeaders[chk] || "";
-      if (!qrColIdx && (isSameFieldCategory(headTxt, "QR Code") || isSameFieldCategory(headTxt, "باركود"))) {
-        qrColIdx = chk + 1;
+      var headTxt = (currentHeaders[chk] || "").toString().trim().toLowerCase();
+      if (!headTxt) continue;
+      var colNum = chk + 1;
+
+      var isQr = (headTxt.indexOf("qr") !== -1 || headTxt.indexOf("باركود") !== -1 || headTxt.indexOf("استجابة") !== -1 || headTxt.indexOf("استجابه") !== -1);
+      var isStatus = (headTxt.indexOf("ارسال") !== -1 || headTxt.indexOf("status") !== -1 || headTxt.indexOf("حالة") !== -1 || headTxt.indexOf("حاله") !== -1);
+
+      if (isQr) {
+        if (!qrColIdx) {
+          qrColIdx = colNum;
+        } else if (colNum > 16) {
+          duplicateHeadersToClean.push(colNum);
+        }
       }
-      if (!statusColIdx && (isSameFieldCategory(headTxt, "تأكيد الإرسال") || isSameFieldCategory(headTxt, "حالة الإرسال") || isSameFieldCategory(headTxt, "تم الإرسال"))) {
-        statusColIdx = chk + 1;
+      if (isStatus) {
+        if (!statusColIdx) {
+          statusColIdx = colNum;
+        } else if (colNum > 16) {
+          duplicateHeadersToClean.push(colNum);
+        }
       }
     }
 
-    // إذا لم تكن موجودة، استخدام التكوين المحدد أو الأعمدة الافتراضية
+    // إذا لم تكن موجودة، استخدام الأعمدة الافتراضية القياسية O (15) و P (16)
     if (!qrColIdx) {
-      var qrColLetter = (data.emailConfig && data.emailConfig.qrDriveUrlColumn) ? data.emailConfig.qrDriveUrlColumn : "";
-      qrColIdx = qrColLetter ? colLetterToNumber(qrColLetter) : 0;
+      var qrColLetter = (data.emailConfig && data.emailConfig.qrDriveUrlColumn) ? data.emailConfig.qrDriveUrlColumn : "O";
+      qrColIdx = colLetterToNumber(qrColLetter) || 15;
     }
     if (!statusColIdx) {
-      var statusColLetter = (data.emailConfig && data.emailConfig.deliveryStatusColumn) ? data.emailConfig.deliveryStatusColumn : "";
-      statusColIdx = statusColLetter ? colLetterToNumber(statusColLetter) : 0;
+      var statusColLetter = (data.emailConfig && data.emailConfig.deliveryStatusColumn) ? data.emailConfig.deliveryStatusColumn : "P";
+      statusColIdx = colLetterToNumber(statusColLetter) || 16;
+    }
+
+    // تنظيف أي ترويسات مكررة تم إنشاؤها بالخطأ في أعمدة متأخرة (مثل Y و Z)
+    for (var dc = 0; dc < duplicateHeadersToClean.length; dc++) {
+      try {
+        var dupColIdx = duplicateHeadersToClean[dc];
+        if (dupColIdx > 16 && sheet.getMaxColumns() >= dupColIdx) {
+          sheet.getRange(1, dupColIdx).clearContent();
+        }
+      } catch (cleanDupErr) {}
     }
 
     try {
-      if (qrColIdx > 0) {
-        if (sheet.getMaxColumns() < qrColIdx) {
-          sheet.insertColumnsAfter(sheet.getMaxColumns(), qrColIdx - sheet.getMaxColumns() + 1);
-        }
+      if (qrColIdx > 0 && sheet.getMaxColumns() >= qrColIdx) {
         if (sheet.getRange(1, qrColIdx).getValue() === "") {
           sheet.getRange(1, qrColIdx)
                .setValue("رابط صورة QR Code (Google Drive)")
@@ -840,10 +862,7 @@ function submitRegistration(data) {
                .setHorizontalAlignment("center");
         }
       }
-      if (statusColIdx > 0) {
-        if (sheet.getMaxColumns() < statusColIdx) {
-          sheet.insertColumnsAfter(sheet.getMaxColumns(), statusColIdx - sheet.getMaxColumns() + 1);
-        }
+      if (statusColIdx > 0 && sheet.getMaxColumns() >= statusColIdx) {
         if (sheet.getRange(1, statusColIdx).getValue() === "") {
           sheet.getRange(1, statusColIdx)
                .setValue("حالة إرسال الإيميل (Email Status)")
@@ -857,27 +876,26 @@ function submitRegistration(data) {
       Logger.log("Header setup note: " + headErr.message);
     }
 
-    // 10. المزامنة التلقائية لبيانات المشترك في ورقة Settings (B + Z:AA)
+    // 10. المزامنة التلقائية لبيانات المشترك في ورقة Settings (A + B + Z:AC)
     try {
       var settingsSheet = ss.getSheetByName("Settings");
       if (settingsSheet) {
         var sLastRow = settingsSheet.getLastRow();
         var targetSettingsRow = -1;
         
-        // البحث عن صف المشترك إذا كان مسجلاً مسبقاً في Z أو AA
-        if (sLastRow >= 2) {
-          var zColData = settingsSheet.getRange(2, 26, sLastRow - 1, 2).getValues(); // Z:AA
-          for (var sIdx = 0; sIdx < zColData.length; sIdx++) {
-            var zVal = (zColData[sIdx][0] || "").toString().trim();
-            var aaVal = (zColData[sIdx][1] || "").toString().trim();
-            if ((displayName && zVal === displayName) || (registrationId && aaVal === registrationId)) {
+        // البحث عن صف المشترك حصراً برقم التسجيل في AA (العمود 27)
+        if (registrationId && sLastRow >= 2) {
+          var aaColData = settingsSheet.getRange(2, 27, sLastRow - 1, 1).getValues(); // AA
+          for (var sIdx = 0; sIdx < aaColData.length; sIdx++) {
+            var aaVal = (aaColData[sIdx][0] || "").toString().trim();
+            if (aaVal === registrationId.toString().trim()) {
               targetSettingsRow = sIdx + 2;
               break;
             }
           }
         }
         
-        // إذا لم يكن موجوداً، ننشئ صفاً جديداً في ورقة Settings
+        // إذا لم يكن موجوداً برقم التسجيل، يُضاف صف جديد دائماً في نهاية ورقة Settings
         if (targetSettingsRow === -1) {
           targetSettingsRow = Math.max(sLastRow + 1, 2);
           if (settingsSheet.getMaxRows() < targetSettingsRow) {
@@ -1110,7 +1128,7 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
     }
     if (!emailConfig) emailConfig = {};
 
-    var emailColLetter = emailConfig.emailColumn || "E";
+    var emailColLetter = emailConfig.emailColumn || "G";
     var emailColIdx = colLetterToNumber(emailColLetter);
     
     // استخراج البريد الإلكتروني بذكاء من كافة الاحتمالات الممكنة
@@ -1264,6 +1282,9 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
     if (!qrColIdxToSave && emailConfig && emailConfig.qrDriveUrlColumn) {
       qrColIdxToSave = colLetterToNumber(emailConfig.qrDriveUrlColumn);
     }
+    if (!qrColIdxToSave) {
+      qrColIdxToSave = 15; // O
+    }
     
     if (sheet && rowIdx && qrColIdxToSave > 0) {
       try {
@@ -1278,10 +1299,11 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
     }
 
     // بناء جدول البيانات المرسلة
-    var dataFields = emailConfig.dataFields || [
+    var dataFields = (emailConfig.dataFields && emailConfig.dataFields.length > 0) ? emailConfig.dataFields : [
       { label: "رقم التسجيل", labelEn: "Registration ID", labelTh: "หมายเลขลงทะเบียน", columnLetter: "B" },
       { label: "اسم المشترك", labelEn: "Subscriber Name", labelTh: "ชื่อผู้สมัคร", columnLetter: "C" },
       { label: "تاريخ ووقت التسجيل", labelEn: "Registration Date", labelTh: "วันเวลาที่ลงทะเบียน", columnLetter: "A" },
+      { label: "رقم الهاتف / الواتساب", labelEn: "Phone / WhatsApp", labelTh: "เบอร์โทรศัพท์ / WhatsApp", columnLetter: "F" },
       { label: "رابط الدخول لصفحة الاشتراك", labelEn: "Subscriber Portal Link", labelTh: "ลิงก์เข้าสู่ระบบ", columnLetter: "LOGIN_URL" }
     ];
 
@@ -1316,7 +1338,24 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
     }
 
     // بناء المرفقات والروابط والملفات المرفقة فعلياً بالإيميل
-    var attachments = emailConfig.attachments || [];
+    var attachments = (emailConfig.attachments && emailConfig.attachments.length > 0) ? emailConfig.attachments : [
+      {
+        id: "1",
+        title: "دليل المشترك ومنهاج الدورات (PDF)",
+        titleEn: "Subscriber Guide & Curriculum (PDF)",
+        titleTh: "คู่มือสมาชิกและหลักสูตร (PDF)",
+        url: "https://drive.google.com/file/d/1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7/view",
+        type: "file_button"
+      },
+      {
+        id: "2",
+        title: "شعار وبطاقة عضوية المؤسسة",
+        titleEn: "Institute Badge & Emblem",
+        titleTh: "ตราสัญลักษณ์บัตรสมาชิก",
+        url: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80",
+        type: "image"
+      }
+    ];
     var attachmentsHtml = "";
     var emailFileBlobs = [];
     var inlineImagesMap = {};
@@ -1559,6 +1598,9 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
     }
     if (!statusColIdxToSave && emailConfig && emailConfig.deliveryStatusColumn) {
       statusColIdxToSave = colLetterToNumber(emailConfig.deliveryStatusColumn);
+    }
+    if (!statusColIdxToSave) {
+      statusColIdxToSave = 16; // P
     }
     
     if (sheet && rowIdx && statusColIdxToSave > 0) {

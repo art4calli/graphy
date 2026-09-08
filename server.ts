@@ -3812,7 +3812,16 @@ app.post("/api/register", async (req, res) => {
         ...(activeEmailConfig.messages || {}),
         ...((registrationData.emailConfig && registrationData.emailConfig.messages) || {})
       },
-      driveFolderId: currentDriveFolderId
+      dataFields: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.dataFields) && registrationData.emailConfig.dataFields.length > 0)
+        ? registrationData.emailConfig.dataFields
+        : (activeEmailConfig.dataFields || []),
+      attachments: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.attachments) && registrationData.emailConfig.attachments.length > 0)
+        ? registrationData.emailConfig.attachments
+        : (activeEmailConfig.attachments || []),
+      driveFolderId: currentDriveFolderId,
+      qrDriveUrlColumn: "O",
+      deliveryStatusColumn: "P",
+      emailColumn: "G"
     };
 
     // Check and upload any pending base64 images to Google Drive before saving to sheet

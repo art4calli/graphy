@@ -1,3 +1,5 @@
+import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../src/data/defaultConfigs";
+
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc-9cJ1Yh16hWRVAIGwZJCxQc4H8goaLUeB_4EuWtJi7tb6qhveCqbfTGkd3gQqHC7CQ/exec";
 const DEFAULT_SPREADSHEET_ID = "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 const DEFAULT_DRIVE_FOLDER_ID = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
@@ -124,11 +126,37 @@ export default async function handler(req: any, res: any) {
       }
     }
 
+    const mergedEmailConfig = {
+      ...DEFAULT_SUBSCRIBER_EMAIL_CONFIG,
+      ...(registrationData.emailConfig || {}),
+      messages: {
+        ...DEFAULT_SUBSCRIBER_EMAIL_CONFIG.messages,
+        ...((registrationData.emailConfig && registrationData.emailConfig.messages) || {})
+      },
+      dataFields: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.dataFields) && registrationData.emailConfig.dataFields.length > 0)
+        ? registrationData.emailConfig.dataFields
+        : DEFAULT_SUBSCRIBER_EMAIL_CONFIG.dataFields,
+      attachments: (registrationData.emailConfig && Array.isArray(registrationData.emailConfig.attachments) && registrationData.emailConfig.attachments.length > 0)
+        ? registrationData.emailConfig.attachments
+        : DEFAULT_SUBSCRIBER_EMAIL_CONFIG.attachments,
+      driveFolderId: targetFolderId,
+      qrDriveUrlColumn: "O",
+      deliveryStatusColumn: "P",
+      emailColumn: "G"
+    };
+
+    const mergedTelegramConfig = {
+      ...DEFAULT_TELEGRAM_CONFIG,
+      ...(registrationData.telegramConfig || {})
+    };
+
     const payload = {
       ...registrationData,
       answers: filteredAnswers,
       registrationId,
-      timestamp: formattedTimestamp
+      timestamp: formattedTimestamp,
+      emailConfig: mergedEmailConfig,
+      telegramConfig: mergedTelegramConfig
     };
 
     // 2. Forward to Google Apps Script
