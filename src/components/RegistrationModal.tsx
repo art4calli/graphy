@@ -321,7 +321,7 @@ export default function RegistrationModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [successInfo, setSuccessInfo] = useState<{ id?: string; message?: string }>({});
+  const [successInfo, setSuccessInfo] = useState<{ id?: string; message?: string; name?: string; email?: string; phone?: string }>({});
   const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
   const [uploadStatusMessage, setUploadStatusMessage] = useState<string | null>(null);
   const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
@@ -1242,6 +1242,9 @@ export default function RegistrationModal({
         setIsSuccess(true);
         setSuccessInfo({
           id: finalId,
+          name: nameVal,
+          email: emailVal,
+          phone: phoneVal,
           message: submitResult.message || `تم استلام وحفظ طلب تسجيلك بنجاح بالرقم المرجعي (${finalId}) ومزامنة البيانات وتلغرام!`
         });
       } else {
@@ -1490,23 +1493,98 @@ export default function RegistrationModal({
             >
               {isSuccess ? (
                 /* SUCCESS VIEW */
-                <div className="text-center py-8 px-4 space-y-5">
-                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30">
-                    <CheckCircle2 className="w-9 h-9" />
+                <div className="text-center py-4 px-2 sm:px-4 space-y-4">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 shadow-lg">
+                    <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9" />
                   </div>
-                  <div className="space-y-2">
-                    <h4 className="font-serif font-bold text-2xl text-slate-100">
+                  <div className="space-y-1.5">
+                    <h4 className="font-serif font-bold text-xl sm:text-2xl text-slate-100">
                       {t.successTitle}
                     </h4>
-                    <p className="text-slate-300 text-sm max-w-md mx-auto leading-relaxed">
+                    <p className="text-slate-300 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
                       {t.successDesc}
                     </p>
                   </div>
 
-                  <div className="pt-4">
+                  {/* بطاقة رقم التسجيل وبيانات المشترك المعتمدة */}
+                  <div className="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4 text-center space-y-2 max-w-md mx-auto shadow-md">
+                    <span className="text-[11px] font-semibold text-slate-400 block">
+                      {formLang === "en" ? "Official Registration ID:" : formLang === "th" ? "รหัสการสมัครอย่างเป็นทางการ:" : "رقم القيد والتسجيل المعتمد:"}
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="font-mono text-xl sm:text-2xl font-black text-amber-400 tracking-wider">
+                        {successInfo.id || "202686124"}
+                      </span>
+                    </div>
+                    {successInfo.name && (
+                      <div className="text-xs text-slate-300 pt-1 border-t border-slate-800/80 flex items-center justify-center gap-2">
+                        <span className="text-slate-400">{formLang === "en" ? "Name:" : formLang === "th" ? "ชื่อ:" : "الاسم:"}</span>
+                        <span className="font-bold text-slate-100">{successInfo.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* المساحة الأنيقة المخصصة لربط وتفعيل حساب تلغرام */}
+                  {(() => {
+                    let activeEmailConfig: any = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+                    if (typeof window !== "undefined") {
+                      try {
+                        const stored = localStorage.getItem("thnoon_subscriber_email_config");
+                        if (stored) activeEmailConfig = JSON.parse(stored);
+                      } catch (e) {}
+                    }
+                    const botTemplate = activeEmailConfig?.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX";
+                    const studentRegId = successInfo.id || "202686124";
+                    const studentTelegramLink = botTemplate.replace(/XXXXXX/g, studentRegId).replace(/{id}/g, studentRegId);
+                    const telegramQrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(studentTelegramLink)}&size=200&margin=1`;
+
+                    const currentLangMsgs = activeEmailConfig?.messages?.[formLang] || activeEmailConfig?.messages?.["ar"] || {};
+                    const telegramTitle = currentLangMsgs.telegramSectionTitle || (formLang === "en" ? "Connect & Activate Telegram Bot 📲" : (formLang === "th" ? "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲" : "ربط وتفعيل حسابك في بوت تلغرام 📲"));
+                    const telegramDesc = currentLangMsgs.telegramSectionDesc || (formLang === "en" ? "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:" : (formLang === "th" ? "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:" : "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:"));
+                    const telegramBtnText = currentLangMsgs.telegramButtonText || (formLang === "en" ? "📲 Activate Account on Telegram" : (formLang === "th" ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที" : "📲 تفعيل الحساب في تلغرام مباشرة"));
+
+                    return (
+                      <div className="bg-gradient-to-br from-sky-950/80 via-slate-950 to-slate-900 border border-sky-500/40 rounded-2xl p-4 sm:p-5 text-center space-y-3.5 max-w-md mx-auto shadow-xl">
+                        <div className="flex items-center justify-center gap-2 text-sky-400 font-bold text-sm sm:text-base">
+                          <Send className="w-4 h-4 text-sky-400" />
+                          <span>{telegramTitle}</span>
+                        </div>
+
+                        <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
+                          {telegramDesc}
+                        </p>
+
+                        {/* Telegram Activation QR Code */}
+                        <div className="inline-block p-2.5 bg-white rounded-2xl shadow-lg border border-sky-400/40">
+                          <img
+                            src={telegramQrUrl}
+                            alt="Telegram Activation QR"
+                            className="w-32 h-32 sm:w-36 sm:h-36 mx-auto object-contain"
+                          />
+                        </div>
+
+                        {/* Interactive Direct Button */}
+                        <div>
+                          <a
+                            href={studentTelegramLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-sky-600/30 transition-all cursor-pointer"
+                          >
+                            <Send className="w-4 h-4" />
+                            <span>{telegramBtnText}</span>
+                            <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="pt-2">
                     <button
+                      type="button"
                       onClick={handleResetAndClose}
-                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm px-8 py-3 rounded-xl shadow-lg transition-all cursor-pointer"
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs px-6 py-2 rounded-xl transition-all cursor-pointer border border-slate-700"
                     >
                       {t.closeSuccessBtn}
                     </button>

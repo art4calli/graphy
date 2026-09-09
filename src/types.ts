@@ -223,6 +223,9 @@ export interface EmailLanguageTemplate {
   header: string;
   body: string;
   footerNote: string;
+  telegramSectionTitle?: string;
+  telegramSectionDesc?: string;
+  telegramButtonText?: string;
 }
 
 export interface SubscriberEmailConfig {
@@ -233,6 +236,8 @@ export interface SubscriberEmailConfig {
   qrCodeColumns: string;            // الأعمدة أو البيانات التي سيتم توليد الـ QR Code منها (مثال: B أو A,B)
   qrDriveUrlColumn: string;         // عامود حفظ رابط صورة كيو آر كود في قوقل درايف (مثال: Y)
   includeQrInEmail: boolean;        // تضمين صورة QR كود في نص الإيميل
+  telegramBotLink?: string;          // رابط تفعيل بوت تلغرام (مثال: https://t.me/nuon2026_bot?start=student_XXXXXX)
+  includeTelegramQrInEmail?: boolean;// تضمين بطاقة ربط بوت تلغرام مع الـ QR والزر المباشر في الإيميل
   messages: {
     ar: EmailLanguageTemplate;
     en: EmailLanguageTemplate;

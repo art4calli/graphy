@@ -63,24 +63,35 @@ const DEFAULT_CONFIG: SubscriberEmailConfig = {
   qrCodeColumns: "B",
   qrDriveUrlColumn: "O",
   includeQrInEmail: true,
+  telegramBotLink: "https://t.me/nuon2026_bot?start=student_XXXXXX",
+  includeTelegramQrInEmail: true,
   messages: {
     ar: {
       subject: "تأكيد تسجيلك في منصة مؤسسة يوسف ذنون - بيانات الدخول والاشتراك",
       header: "مرحباً بك في مؤسسة يوسف ذنون للخط العربي",
       body: "نشكرك على تسجيلك واهتمامك بتعلم وإتقان فنون الخط العربي الأصيل. فيما يلي تفاصيل وبيانات تسجيلك المعتمدة للدخول ومتابعة الدورات والمحتوى الحصري:",
-      footerNote: "يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code) وبيانات التسجيل لاستخدامها عند مراجعة اشتراكك أو حضور الجلسات."
+      footerNote: "يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code) وبيانات التسجيل لاستخدامها عند مراجعة اشتراكك أو حضور الجلسات.",
+      telegramSectionTitle: "ربط وتفعيل حسابك في بوت تلغرام 📲",
+      telegramSectionDesc: "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:",
+      telegramButtonText: "📲 تفعيل الحساب في تلغرام مباشرة"
     },
     en: {
       subject: "Registration Confirmation - Yousuf Dhannoon Calligraphy Portal",
       header: "Welcome to Yousuf Dhannoon Calligraphy Institute",
       body: "Thank you for registering. Below are your verified registration details and access credentials to explore your courses and exclusive content:",
-      footerNote: "Please keep this QR Code and your registration ID handy for subscription verification and session access."
+      footerNote: "Please keep this QR Code and your registration ID handy for subscription verification and session access.",
+      telegramSectionTitle: "Connect & Activate Telegram Bot 📲",
+      telegramSectionDesc: "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:",
+      telegramButtonText: "📲 Activate Account on Telegram"
     },
     th: {
       subject: "ยืนยันการลงทะเบียน - สถาบันศิลปะการเขียนตัวอักษรอาหรับ ยูซุฟ ซันนูน",
       header: "ยินดีต้อนรับสู่ สถาบันยูซุฟ ซันนูน สำหรับการเขียนอักษรอาหรับ",
       body: "ขอขอบคุณสำหรับการลงทะเบียน รายละเอียดข้อมูลการสมัครและข้อมูลสำหรับเข้าสู่ระบบบทเรียนของคุณมีดังนี้:",
-      footerNote: "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์และการเข้าเรียน"
+      footerNote: "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์และการเข้าเรียน",
+      telegramSectionTitle: "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲",
+      telegramSectionDesc: "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:",
+      telegramButtonText: "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
     }
   },
   attachments: [
@@ -212,9 +223,12 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
         setConfig({
           ...DEFAULT_CONFIG,
           ...data.config,
+          telegramBotLink: data.config.telegramBotLink || DEFAULT_CONFIG.telegramBotLink,
+          includeTelegramQrInEmail: data.config.includeTelegramQrInEmail !== undefined ? data.config.includeTelegramQrInEmail : true,
           messages: {
-            ...DEFAULT_CONFIG.messages,
-            ...(data.config.messages || {})
+            ar: { ...DEFAULT_CONFIG.messages.ar, ...(data.config.messages?.ar || {}) },
+            en: { ...DEFAULT_CONFIG.messages.en, ...(data.config.messages?.en || {}) },
+            th: { ...DEFAULT_CONFIG.messages.th, ...(data.config.messages?.th || {}) },
           }
         });
       }
@@ -224,7 +238,18 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
         const local = localStorage.getItem("thnoon_subscriber_email_config");
         if (local) {
           try {
-            setConfig(JSON.parse(local));
+            const parsed = JSON.parse(local);
+            setConfig({
+              ...DEFAULT_CONFIG,
+              ...parsed,
+              telegramBotLink: parsed.telegramBotLink || DEFAULT_CONFIG.telegramBotLink,
+              includeTelegramQrInEmail: parsed.includeTelegramQrInEmail !== undefined ? parsed.includeTelegramQrInEmail : true,
+              messages: {
+                ar: { ...DEFAULT_CONFIG.messages.ar, ...(parsed.messages?.ar || {}) },
+                en: { ...DEFAULT_CONFIG.messages.en, ...(parsed.messages?.en || {}) },
+                th: { ...DEFAULT_CONFIG.messages.th, ...(parsed.messages?.th || {}) },
+              }
+            });
           } catch (e) {}
         }
       }
@@ -342,6 +367,9 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
       if (arTemplate.greeting) itemsToTranslate.push({ id: "greet", ar: arTemplate.greeting });
       if (arTemplate.body) itemsToTranslate.push({ id: "body", ar: arTemplate.body });
       if (arTemplate.footer) itemsToTranslate.push({ id: "footer", ar: arTemplate.footer });
+      if (arTemplate.telegramSectionTitle) itemsToTranslate.push({ id: "tgTitle", ar: arTemplate.telegramSectionTitle });
+      if (arTemplate.telegramSectionDesc) itemsToTranslate.push({ id: "tgDesc", ar: arTemplate.telegramSectionDesc });
+      if (arTemplate.telegramButtonText) itemsToTranslate.push({ id: "tgBtn", ar: arTemplate.telegramButtonText });
 
       config.dataFields.forEach((f) => {
         itemsToTranslate.push({ id: `f_${f.id}`, ar: f.label });
@@ -358,6 +386,9 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
         greeting: batchResults["greet"]?.en || arTemplate.greeting,
         body: batchResults["body"]?.en || arTemplate.body,
         footer: batchResults["footer"]?.en || arTemplate.footer,
+        telegramSectionTitle: batchResults["tgTitle"]?.en || arTemplate.telegramSectionTitle,
+        telegramSectionDesc: batchResults["tgDesc"]?.en || arTemplate.telegramSectionDesc,
+        telegramButtonText: batchResults["tgBtn"]?.en || arTemplate.telegramButtonText,
       };
 
       const thMsg = {
@@ -365,6 +396,9 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
         greeting: batchResults["greet"]?.th || arTemplate.greeting,
         body: batchResults["body"]?.th || arTemplate.body,
         footer: batchResults["footer"]?.th || arTemplate.footer,
+        telegramSectionTitle: batchResults["tgTitle"]?.th || arTemplate.telegramSectionTitle,
+        telegramSectionDesc: batchResults["tgDesc"]?.th || arTemplate.telegramSectionDesc,
+        telegramButtonText: batchResults["tgBtn"]?.th || arTemplate.telegramButtonText,
       };
 
       const updatedMessages = {
@@ -944,6 +978,90 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
         </div>
       </div>
 
+      {/* SECTION 3.5: Telegram Bot Deep Linking & Activation QR */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2 text-sky-400 font-serif font-bold text-sm">
+            <Send className="w-4 h-4 text-sky-400" />
+            <span>إعدادات ربط بوت تلغرام للمشتركين (Telegram Bot Deep Linking & QR)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.includeTelegramQrInEmail !== false}
+                onChange={(e) => setConfig(prev => ({ ...prev, includeTelegramQrInEmail: e.target.checked }))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500"></div>
+            </label>
+            <span className="text-xs font-bold text-slate-200">
+              {config.includeTelegramQrInEmail !== false ? "مُفعّل في الإيميل ✅" : "مُعطّل ⏸️"}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <div className="lg:col-span-8 space-y-4">
+            {/* Telegram Bot Link Input */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-slate-200 flex items-center justify-between">
+                <span>رابط تفعيل بوت تلغرام (Telegram Bot Link Template):</span>
+                <span className="text-[10px] text-sky-400 font-mono">ضع XXXXXX لاستبداله برقم قيد الطالب</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX"}
+                  onChange={(e) => setConfig(prev => ({ ...prev, telegramBotLink: e.target.value.trim() }))}
+                  placeholder="https://t.me/nuon2026_bot?start=student_XXXXXX"
+                  dir="ltr"
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 focus:border-sky-500 rounded-xl text-xs font-mono text-sky-200 focus:outline-none transition-colors"
+                />
+              </div>
+              <div className="p-3 bg-sky-950/30 border border-sky-800/40 rounded-xl text-[11px] text-sky-200 leading-relaxed space-y-1">
+                <div className="font-semibold text-sky-300 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5 shrink-0" />
+                  <span>توليد تلقائي داخل النظام بدون استهلاك درايف أو الشيت:</span>
+                </div>
+                <p>
+                  يمكنك تغيير معرف البوت بكل سهولة إذا قمت بتحديث البوت. يقوم النظام آلياً باستبدال الرمز <code className="bg-sky-900/60 px-1.5 py-0.5 rounded text-amber-300 font-mono">XXXXXX</code> برقم قيد المشترك الفعلي (مثال: <code className="text-emerald-300 font-mono">student_202686124</code>) لإنتاج رمز QR خاص بكل طالب وزر تفاعلي مباشر يرسل أمر البدء للبوت فوراً، دون الحاجة لحفظ صور في Google Drive أو روابط في الشيت.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Preview Box for Telegram QR */}
+          <div className="lg:col-span-4 bg-slate-950/90 border border-sky-500/30 rounded-xl p-4 text-center space-y-3">
+            <span className="text-[11px] font-bold text-sky-300 block">
+              معاينة فورية لكود QR تلغرام التجريبي
+            </span>
+            <div className="inline-block p-2 bg-white rounded-xl shadow-md border border-sky-400/40">
+              <img
+                src={`https://quickchart.io/qr?text=${encodeURIComponent(
+                  (config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX")
+                    .replace(/XXXXXX/g, "202686124")
+                    .replace(/{id}/g, "202686124")
+                )}&size=140&margin=1`}
+                alt="Telegram QR Preview"
+                className="w-24 h-24 mx-auto object-contain"
+              />
+            </div>
+            <a
+              href={(config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX")
+                .replace(/XXXXXX/g, "202686124")
+                .replace(/{id}/g, "202686124")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg shadow w-full transition-all"
+            >
+              <Send className="w-3 h-3" />
+              <span>تجربة فتح الرابط في تلغرام ↗</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* SECTION 4: Email Message Templates (Multilingual) */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -1126,6 +1244,83 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
               placeholder="يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code)..."
               className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 focus:border-amber-500 rounded-xl text-xs text-slate-100 focus:outline-none transition-colors"
             />
+          </div>
+
+          {/* Telegram Bot Activation Multilingual Texts */}
+          <div className="bg-slate-950/70 border border-sky-500/30 rounded-xl p-4 space-y-3 mt-4">
+            <div className="flex items-center gap-2 text-sky-400 font-semibold text-xs border-b border-slate-800 pb-2">
+              <Send className="w-3.5 h-3.5" />
+              <span>نصوص قسم ربط وتفعيل بوت تلغرام (اللغة الحالية: {activeLangTab === "ar" ? "العربية" : activeLangTab === "en" ? "English" : "ภาษาไทย"})</span>
+            </div>
+
+            {/* Telegram Section Title */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-200">
+                عنوان قسم ربط بوت تلغرام (Telegram Card Title):
+              </label>
+              <input
+                type="text"
+                value={currentMsg.telegramSectionTitle || ""}
+                onChange={(e) => setConfig(prev => ({
+                  ...prev,
+                  messages: {
+                    ...prev.messages,
+                    [activeLangTab]: {
+                      ...prev.messages[activeLangTab],
+                      telegramSectionTitle: e.target.value
+                    }
+                  }
+                }))}
+                placeholder="ربط وتفعيل حسابك في بوت تلغرام 📲"
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 focus:border-sky-500 rounded-xl text-xs text-slate-100 focus:outline-none transition-colors"
+              />
+            </div>
+
+            {/* Telegram Section Description */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-200">
+                شرح وخطوات التفعيل (Instructions / Description):
+              </label>
+              <textarea
+                rows={2}
+                value={currentMsg.telegramSectionDesc || ""}
+                onChange={(e) => setConfig(prev => ({
+                  ...prev,
+                  messages: {
+                    ...prev.messages,
+                    [activeLangTab]: {
+                      ...prev.messages[activeLangTab],
+                      telegramSectionDesc: e.target.value
+                    }
+                  }
+                }))}
+                placeholder="امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك..."
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 focus:border-sky-500 rounded-xl text-xs text-slate-100 leading-relaxed focus:outline-none transition-colors"
+              />
+            </div>
+
+            {/* Telegram Button Text */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-slate-200">
+                نص الزر التفاعلي المباشر (Button Label):
+              </label>
+              <input
+                type="text"
+                value={currentMsg.telegramButtonText || ""}
+                onChange={(e) => setConfig(prev => ({
+                  ...prev,
+                  messages: {
+                    ...prev.messages,
+                    [activeLangTab]: {
+                      ...prev.messages[activeLangTab],
+                      telegramButtonText: e.target.value
+                    }
+                  }
+                }))}
+                placeholder="📲 تفعيل الحساب في تلغرام مباشرة"
+                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 focus:border-sky-500 rounded-xl text-xs text-slate-100 focus:outline-none transition-colors"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1360,6 +1555,47 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
                   </table>
                 </div>
               </div>
+
+              {/* Telegram Bot Activation Section (Directly under Data Table) */}
+              {config.includeTelegramQrInEmail !== false && (
+                <div className="bg-gradient-to-br from-sky-950/70 to-slate-950 border border-sky-500/40 rounded-xl p-4 text-center space-y-3 shadow-lg">
+                  <div className="flex items-center justify-center gap-1.5 text-sky-400 font-bold text-xs">
+                    <Send className="w-3.5 h-3.5" />
+                    <span>
+                      {previewMsg.telegramSectionTitle || (previewLang === "en" ? "Connect & Activate Telegram Bot 📲" : (previewLang === "th" ? "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲" : "ربط وتفعيل حسابك في بوت تلغرام 📲"))}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed max-w-sm mx-auto">
+                    {previewMsg.telegramSectionDesc || (previewLang === "en" ? "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:" : (previewLang === "th" ? "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:" : "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:"))}
+                  </p>
+                  <div className="inline-block p-2 bg-white rounded-xl shadow-md border border-sky-400/30">
+                    <img
+                      src={`https://quickchart.io/qr?text=${encodeURIComponent(
+                        (config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX")
+                          .replace(/XXXXXX/g, "202686124")
+                          .replace(/{id}/g, "202686124")
+                      )}&size=140&margin=1`}
+                      alt="Telegram Bot QR"
+                      className="w-24 h-24 mx-auto object-contain"
+                    />
+                  </div>
+                  <div>
+                    <a
+                      href={(config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX")
+                        .replace(/XXXXXX/g, "202686124")
+                        .replace(/{id}/g, "202686124")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>
+                        {previewMsg.telegramButtonText || (previewLang === "en" ? "📲 Activate Account on Telegram" : (previewLang === "th" ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที" : "📲 تفعيل الحساب في تلغرام مباشرة"))}
+                      </span>
+                    </a>
+                  </div>
+                </div>
+              )}
 
               {/* QR Code Pass Card */}
               {config.includeQrInEmail !== false && (

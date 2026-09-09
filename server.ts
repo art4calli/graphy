@@ -2331,24 +2331,35 @@ function loadSubscriberEmailConfig() {
     qrCodeColumns: "B",
     qrDriveUrlColumn: "O",
     includeQrInEmail: true,
+    telegramBotLink: "https://t.me/nuon2026_bot?start=student_XXXXXX",
+    includeTelegramQrInEmail: true,
     messages: {
       ar: {
         subject: "تأكيد تسجيلك في منصة مؤسسة يوسف ذنون - بيانات الدخول والاشتراك",
         header: "مرحباً بك في مؤسسة يوسف ذنون للخط العربي",
         body: "نشكرك على تسجيلك واهتمامك بتعلم وإتقان فنون الخط العربي الأصيل. فيما يلي تفاصيل وبيانات تسجيلك المعتمدة للدخول ومتابعة الدورات والمحتوى الحصري:",
-        footerNote: "يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code) وبيانات التسجيل لاستخدامها عند مراجعة اشتراكك أو حضور الجلسات."
+        footerNote: "يرجى الاحتفاظ برمز الاستجابة السريعة (QR Code) وبيانات التسجيل لاستخدامها عند مراجعة اشتراكك أو حضور الجلسات.",
+        telegramSectionTitle: "ربط وتفعيل حسابك في بوت تلغرام 📲",
+        telegramSectionDesc: "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:",
+        telegramButtonText: "📲 تفعيل الحساب في تلغرام مباشرة"
       },
       en: {
         subject: "Registration Confirmation - Yousuf Dhannoon Calligraphy Portal",
         header: "Welcome to Yousuf Dhannoon Calligraphy Institute",
         body: "Thank you for registering. Below are your verified registration details and access credentials to explore your courses and exclusive content:",
-        footerNote: "Please keep this QR Code and your registration ID handy for subscription verification and session access."
+        footerNote: "Please keep this QR Code and your registration ID handy for subscription verification and session access.",
+        telegramSectionTitle: "Connect & Activate Telegram Bot 📲",
+        telegramSectionDesc: "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:",
+        telegramButtonText: "📲 Activate Account on Telegram"
       },
       th: {
         subject: "ยืนยันการลงทะเบียน - สถาบันศิลปะการเขียนตัวอักษรอาหรับ ยูซุฟ ซันนูน",
         header: "ยินดีต้อนรับสู่ สถาบันยูซุฟ ซันนูน สำหรับการเขียนอักษรอาหรับ",
         body: "ขอขอบคุณสำหรับการลงทะเบียน รายละเอียดข้อมูลการสมัครและข้อมูลสำหรับเข้าสู่ระบบบทเรียนของคุณมีดังนี้:",
-        footerNote: "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์และการเข้าเรียน"
+        footerNote: "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์และการเข้าเรียน",
+        telegramSectionTitle: "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲",
+        telegramSectionDesc: "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:",
+        telegramButtonText: "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
       }
     },
     attachments: [
@@ -2906,6 +2917,9 @@ ${JSON.stringify({
   header: arTemplate.header || "",
   body: arTemplate.body || "",
   footerNote: arTemplate.footerNote || "",
+  telegramSectionTitle: arTemplate.telegramSectionTitle || "ربط وتفعيل حسابك في بوت تلغرام 📲",
+  telegramSectionDesc: arTemplate.telegramSectionDesc || "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:",
+  telegramButtonText: arTemplate.telegramButtonText || "📲 تفعيل الحساب في تلغرام مباشرة",
   fields: dataFields ? dataFields.map((f: any) => ({ id: f.id, label: f.label })) : [],
   attachments: attachments ? attachments.map((a: any) => ({ id: a.id, title: a.title })) : []
 }, null, 2)}
@@ -2916,13 +2930,19 @@ Return ONLY valid JSON matching this exact structure:
     "subject": "...",
     "header": "...",
     "body": "...",
-    "footerNote": "..."
+    "footerNote": "...",
+    "telegramSectionTitle": "...",
+    "telegramSectionDesc": "...",
+    "telegramButtonText": "..."
   },
   "th": {
     "subject": "...",
     "header": "...",
     "body": "...",
-    "footerNote": "..."
+    "footerNote": "...",
+    "telegramSectionTitle": "...",
+    "telegramSectionDesc": "...",
+    "telegramButtonText": "..."
   },
   "fieldsEn": { "fieldId": "English Label" },
   "fieldsTh": { "fieldId": "Thai Label" },
@@ -2951,13 +2971,19 @@ Return ONLY valid JSON matching this exact structure:
           subject: "Registration Confirmation - Yousuf Dhannoon Calligraphy Portal",
           header: "Welcome to Yousuf Dhannoon Calligraphy Institute",
           body: arTemplate.body || "Thank you for registering. Below are your verified registration details and access credentials:",
-          footerNote: arTemplate.footerNote || "Please keep this QR Code and your registration ID handy for subscription verification."
+          footerNote: arTemplate.footerNote || "Please keep this QR Code and your registration ID handy for subscription verification.",
+          telegramSectionTitle: "Connect & Activate Telegram Bot 📲",
+          telegramSectionDesc: "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:",
+          telegramButtonText: "📲 Activate Account on Telegram"
         },
         th: {
-          subject: "ยืนยันการลงทะเบียน - สถาบันศิลปะการเขียนตัวอักษรอาหรับ ยูซุฟ ซันنูน",
+          subject: "ยืนยันการลงทะเบียน - สถาบันศิลปะการเขียนตัวอักษรอาหรับ ยูซุฟ ซันนูน",
           header: "ยินดีต้อนรับสู่ สถาบันยูซุฟ ซันนูน สำหรับการเขียนอักษรอาหรับ",
           body: arTemplate.body || "ขอขอบคุณสำหรับการลงทะเบียน รายละเอียดข้อมูลการสมัครสำหรับเข้าสู่ระบบของคุณมีดังนี้:",
-          footerNote: arTemplate.footerNote || "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์"
+          footerNote: arTemplate.footerNote || "กรุณาเก็บรหัส QR Code และหมายเลขลงทะเบียนนี้ไว้เพื่อใช้ในการยืนยันสิทธิ์",
+          telegramSectionTitle: "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲",
+          telegramSectionDesc: "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:",
+          telegramButtonText: "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
         }
       },
       method: "fallback"

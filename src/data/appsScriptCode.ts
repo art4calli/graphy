@@ -1580,6 +1580,37 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
               '</div>'
             ) : '') +
 
+            // مساحة أنيقة مخصصة لربط حساب تلغرام تحت جدول البيانات مباشرة مع باركود وزر تفاعلي
+            ((emailConfig.includeTelegramQrInEmail !== false) ? (
+              (function() {
+                var botTpl = emailConfig.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX";
+                var studentTelLink = botTpl.replace(/XXXXXX/g, registrationId).replace(/{id}/g, registrationId);
+                var telQrImgUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(studentTelLink) + "&size=220&margin=1";
+                var telTitle = langTemplate.telegramSectionTitle || (userLang === "en" ? "Connect & Activate Telegram Bot 📲" : (userLang === "th" ? "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲" : "ربط وتفعيل حسابك في بوت تلغرام 📲"));
+                var telDesc = langTemplate.telegramSectionDesc || (userLang === "en" ? "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:" : (userLang === "th" ? "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:" : "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:"));
+                var telBtn = langTemplate.telegramButtonText || (userLang === "en" ? "📲 Activate Account on Telegram" : (userLang === "th" ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที" : "📲 تفعيل الحساب في تلغرام مباشرة"));
+
+                return '<div style="background:linear-gradient(145deg, #091e36 0%, #0f172a 100%);border:1px solid #0284c7;border-radius:14px;padding:22px 18px;text-align:center;margin-bottom:28px;box-shadow:0 6px 20px rgba(2,132,199,0.18);">' +
+                  '<div style="color:#38bdf8;font-size:16px;font-weight:bold;margin-bottom:8px;">' +
+                    telTitle +
+                  '</div>' +
+                  '<p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0 0 16px 0;max-width:480px;display:inline-block;">' +
+                    telDesc +
+                  '</p>' +
+                  '<div>' +
+                    '<div style="background:#ffffff;padding:12px;display:inline-block;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,0.3);margin-bottom:16px;">' +
+                      '<img src="' + telQrImgUrl + '" alt="Telegram Activation QR" width="160" height="160" style="display:block;" />' +
+                    '</div>' +
+                  '</div>' +
+                  '<div>' +
+                    '<a href="' + studentTelLink + '" target="_blank" style="display:inline-block;background:#0284c7;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold;padding:12px 28px;border-radius:10px;box-shadow:0 4px 12px rgba(2,132,199,0.4);letter-spacing:0.3px;">' +
+                      telBtn +
+                    '</a>' +
+                  '</div>' +
+                '</div>';
+              })()
+            ) : '') +
+
             ((emailConfig.includeQrInEmail !== false) ? (
               '<div style="background:#1e293b;border:1px solid #475569;border-radius:14px;padding:20px;text-align:center;margin-bottom:28px;">' +
                 '<div style="color:#f59e0b;font-size:14px;font-weight:bold;margin-bottom:8px;">' +
