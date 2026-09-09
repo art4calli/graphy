@@ -4056,6 +4056,213 @@ app.post("/api/test-subscriber-email", async (req, res) => {
   }
 });
 
+// SUBSCRIBER TOPICS API (SubscriberContent Sheet Management)
+const SUBSCRIBER_TOPICS_CACHE_FILE = path.join(process.cwd(), "data", "subscriber_topics_cache.json");
+
+function loadLocalSubscriberTopicsCache(): any[] {
+  try {
+    if (fs.existsSync(SUBSCRIBER_TOPICS_CACHE_FILE)) {
+      const content = fs.readFileSync(SUBSCRIBER_TOPICS_CACHE_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn("Failed to read subscriber_topics_cache.json:", e);
+  }
+  return [];
+}
+
+function saveLocalSubscriberTopicsCache(topics: any[]) {
+  try {
+    const dataDir = path.join(process.cwd(), "data");
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(SUBSCRIBER_TOPICS_CACHE_FILE, JSON.stringify(topics, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Failed to save subscriber_topics_cache.json:", e);
+  }
+}
+
+// GET /api/subscriber-topics and /api/subscriber-content
+app.get(["/api/subscriber-topics", "/api/subscriber-content"], async (req, res) => {
+  try {
+    const targetScriptUrl = (req.query.scriptUrl as string)?.trim() || currentScriptUrl;
+
+    // 1. Try Apps Script if configured
+    if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
+      try {
+        const gasUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}action=getSubscriberTopics`;
+        const gasRes = await fetch(gasUrl, {
+          headers: { "Accept": "application/json" },
+          signal: AbortSignal.timeout(6000)
+        });
+        if (gasRes.ok) {
+          const data: any = await gasRes.json().catch(() => null);
+          if (data && data.success && Array.isArray(data.topics) && data.topics.length > 0) {
+            saveLocalSubscriberTopicsCache(data.topics);
+            return res.json({ success: true, topics: data.topics, source: "apps_script" });
+          }
+        }
+      } catch (gasErr: any) {
+        console.warn("GAS fetch subscriber topics error:", gasErr.message);
+      }
+    }
+
+    // 2. Fetch from SubscriberContent sheet via GViz
+    try {
+      const sheetRows = await getSheetValues("SubscriberContent")
+        .catch(() => getSheetValues("محتوى المشتركين"))
+        .catch(() => []);
+
+      if (sheetRows && sheetRows.length > 1) {
+        const parsedTopics: any[] = [];
+        for (let r = 1; r < sheetRows.length; r++) {
+          const row = sheetRows[r];
+          if (!row || row.every((c: any) => !c || c.toString().trim() === "")) continue;
+
+          const topicId = (row[0] || `${r}`).toString().trim();
+          if (!topicId) continue;
+
+          const title = (row[1] || "").toString().trim();
+          const description = (row[2] || "").toString().trim();
+          const coverImage = (row[3] || "").toString().trim();
+          const badge = (row[4] || "").toString().trim();
+
+          const cards: any[] = [];
+          for (let c = 5; c < Math.min(row.length, 45); c += 4) {
+            const cardTitle = (row[c] || "").toString().trim();
+            const cardDesc = (row[c + 1] || "").toString().trim();
+            const cardMediaRaw = (row[c + 2] || "").toString().trim();
+            const cardLink = (row[c + 3] || "").toString().trim();
+
+            if (cardTitle || cardDesc || cardMediaRaw || cardLink) {
+              cards.push({
+                title: cardTitle || `بطاقة ${cards.length + 1}`,
+                description: cardDesc,
+                media: cardMediaRaw ? cardMediaRaw.split(/[\n,;]+/).map((s: string) => s.trim()).filter(Boolean) : [],
+                linkUrl: cardLink
+              });
+            }
+          }
+
+          parsedTopics.push({
+            topicId,
+            rowIndex: r + 1,
+            title,
+            description,
+            coverImage,
+            badge,
+            cards
+          });
+        }
+
+        if (parsedTopics.length > 0) {
+          saveLocalSubscriberTopicsCache(parsedTopics);
+          return res.json({ success: true, topics: parsedTopics, source: "gviz" });
+        }
+      }
+    } catch (gvizErr: any) {
+      console.warn("GViz subscriber topics error:", gvizErr.message);
+    }
+
+    // 3. Fallback to cached topics
+    const cached = loadLocalSubscriberTopicsCache();
+    return res.json({ success: true, topics: cached, source: "cache" });
+  } catch (err: any) {
+    console.error("GET /api/subscriber-topics error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/subscriber-topics/save and /api/subscriber-content/save
+app.post(["/api/subscriber-topics/save", "/api/subscriber-content/save"], async (req, res) => {
+  try {
+    const rawTopic = req.body.topic || req.body;
+    const topic = {
+      ...rawTopic,
+      topicId: String(rawTopic.topicId || req.body.topicId || "1").trim()
+    };
+    if (!topic || !topic.topicId) {
+      return res.status(400).json({ success: false, message: "بيانات الصفحة أو رقم الموضوع مفقود" });
+    }
+
+    // Update local cache
+    const currentCached = loadLocalSubscriberTopicsCache();
+    const existingIdx = currentCached.findIndex((t: any) => String(t.topicId) === String(topic.topicId));
+    if (existingIdx >= 0) {
+      currentCached[existingIdx] = { ...currentCached[existingIdx], ...topic };
+    } else {
+      currentCached.push(topic);
+    }
+    saveLocalSubscriberTopicsCache(currentCached);
+
+    // Proxy to GAS if scriptUrl is present
+    const targetScriptUrl = (req.body.scriptUrl as string)?.trim() || currentScriptUrl;
+    let gasResult: any = null;
+    if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
+      try {
+        const gasResponse = await fetch(targetScriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "saveSubscriberContent", ...topic })
+        });
+        gasResult = await gasResponse.json().catch(() => null);
+      } catch (gasErr: any) {
+        console.warn("Error forwarding saveSubscriberContent to GAS:", gasErr.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: "تم حفظ وتحديث محتوى المشتركين بنجاح",
+      topic,
+      gasResult
+    });
+  } catch (err: any) {
+    console.error("POST /api/subscriber-topics/save error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/subscriber-topics/delete and /api/subscriber-content/delete
+app.post(["/api/subscriber-topics/delete", "/api/subscriber-content/delete"], async (req, res) => {
+  try {
+    const topicId = String(req.body.topicId || req.body.id || "").trim();
+    if (!topicId) {
+      return res.status(400).json({ success: false, message: "رقم الموضوع مفقود" });
+    }
+
+    // Remove from local cache
+    const currentCached = loadLocalSubscriberTopicsCache();
+    const filtered = currentCached.filter((t: any) => String(t.topicId) !== String(topicId));
+    saveLocalSubscriberTopicsCache(filtered);
+
+    // Proxy to GAS if scriptUrl is present
+    const targetScriptUrl = (req.body.scriptUrl as string)?.trim() || currentScriptUrl;
+    let gasResult: any = null;
+    if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
+      try {
+        const gasResponse = await fetch(targetScriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "deleteSubscriberContent", topicId, rowIndex: req.body.rowIndex })
+        });
+        gasResult = await gasResponse.json().catch(() => null);
+      } catch (gasErr: any) {
+        console.warn("Error forwarding deleteSubscriberContent to GAS:", gasErr.message);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `تم حذف موضوع المحتوى رقم ${topicId} بنجاح`,
+      gasResult
+    });
+  } catch (err: any) {
+    console.error("POST /api/subscriber-topics/delete error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // START EXPRESS + VITE SERVER
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

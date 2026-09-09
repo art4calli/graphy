@@ -7,6 +7,7 @@ import TelegramAdminSettings from "./TelegramAdminSettings";
 import RegistrationAnswersViewer from "./RegistrationAnswersViewer";
 import SettingsSubscribersViewer from "./SettingsSubscribersViewer";
 import SiteTextsManager from "./SiteTextsManager";
+import SubscriberContentManager from "./SubscriberContentManager";
 import { translateBatchWithAI } from "../utils/translatorService";
 import { DEFAULT_FORM_TRANSLATIONS } from "../data/defaultFormTranslations";
 import { getSavedFormQuestions, saveConfiguredFormQuestions } from "../data/configuredFormQuestions";
@@ -22,6 +23,7 @@ interface IntegrationSettingsModalProps {
   currentDriveFolderId?: string;
   onSaveConfig: (newScriptUrl: string, newSpreadsheetId: string, newDriveFolderId?: string) => Promise<void>;
   onAdminLogout?: () => void;
+  onOpenMonitoring?: () => void;
 }
 
 export default function IntegrationSettingsModal({
@@ -32,17 +34,19 @@ export default function IntegrationSettingsModal({
   currentDriveFolderId = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7",
   onSaveConfig,
   onAdminLogout,
+  onOpenMonitoring,
 }: IntegrationSettingsModalProps) {
   const [scriptUrl, setScriptUrl] = useState(currentScriptUrl || DEFAULT_SCRIPT_URL);
   const [spreadsheetId, setSpreadsheetId] = useState(currentSpreadsheetId);
   const [driveFolderId, setDriveFolderId] = useState(currentDriveFolderId);
   const [copied, setCopied] = useState(false);
   const [copiedAdminLink, setCopiedAdminLink] = useState(false);
+  const [copiedMonitoringLink, setCopiedMonitoringLink] = useState(false);
   const [copiedLang, setCopiedLang] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"settings" | "admin_auth" | "site_texts" | "settings_subscribers" | "registrants" | "translations" | "subscriber_email" | "telegram_admin" | "code" | "instructions">("settings");
+  const [activeTab, setActiveTab] = useState<"settings" | "admin_auth" | "site_texts" | "settings_subscribers" | "registrants" | "subscriber_content" | "translations" | "subscriber_email" | "telegram_admin" | "code" | "instructions">("settings");
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Admin Credentials State
@@ -606,6 +610,18 @@ export default function IntegrationSettingsModal({
             <Users className="w-4 h-4 shrink-0" />
             <span>سجل المشتركين (RegistrationAnswers)</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("subscriber_content")}
+            className={`flex-shrink-0 flex items-center gap-2 py-2.5 px-3.5 rounded-lg font-sans text-xs font-semibold border-b-2 transition-all ${
+              activeTab === "subscriber_content"
+                ? "border-amber-500 text-amber-400 bg-amber-500/10"
+                : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/60"
+            }`}
+          >
+            <Layers className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>محتوى المشتركين (SubscriberContent)</span>
+          </button>
           
           <button
             onClick={() => setActiveTab("translations")}
@@ -917,6 +933,59 @@ export default function IntegrationSettingsModal({
                     {copiedAdminLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>{copiedAdminLink ? "تم النسخ!" : "نسخ رابط المشرف"}</span>
                   </button>
+                </div>
+              </div>
+
+              {/* SECTION 1.5: Standalone Subscribers & Registrations Monitoring Portal Link */}
+              <div className="bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-900 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-2 font-serif">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    <span>رابط لوحة متابعة وسجل المشتركين المستقل (بدون الدخول للإعدادات العامة):</span>
+                  </h4>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                    جديد ومستقل
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                  رابط مستقل يفتح مباشرة قسمي <strong className="text-white">تسجيل المشتركين (Settings)</strong> و <strong className="text-white">سجل المشتركين (RegistrationAnswers)</strong> مع تسجيل دخول للمشرف، لتسهيل المتابعة اليومية وإدارة الصلاحيات من أي جهاز دون الحاجة لفتح الإعدادات العامة:
+                </p>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={typeof window !== "undefined" ? `${window.location.origin}/?monitoring=true` : "/?monitoring=true"}
+                    className="flex-1 px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-emerald-300 font-mono select-all focus:outline-none"
+                  />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          navigator.clipboard.writeText(`${window.location.origin}/?monitoring=true`);
+                          setCopiedMonitoringLink(true);
+                          setTimeout(() => setCopiedMonitoringLink(false), 2500);
+                        }
+                      }}
+                      className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shadow"
+                    >
+                      {copiedMonitoringLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedMonitoringLink ? "تم النسخ!" : "نسخ رابط المتابعة"}</span>
+                    </button>
+                    {onOpenMonitoring && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onOpenMonitoring();
+                        }}
+                        className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>فتح اللوحة الآن</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1469,6 +1538,14 @@ export default function IntegrationSettingsModal({
             <RegistrationAnswersViewer
               scriptUrl={scriptUrl}
               spreadsheetId={spreadsheetId}
+            />
+          )}
+
+          {/* TAB: SUBSCRIBER CONTENT (SubscriberContent sheet management & AI translation) */}
+          {activeTab === "subscriber_content" && (
+            <SubscriberContentManager
+              currentScriptUrl={scriptUrl}
+              currentSpreadsheetId={spreadsheetId}
             />
           )}
 

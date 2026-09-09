@@ -13,6 +13,7 @@ import SubscriberFullPage from "./components/SubscriberFullPage";
 import IntegrationSettingsModal from "./components/IntegrationSettingsModal";
 import RegistrationModal from "./components/RegistrationModal";
 import AdminLoginModal from "./components/AdminLoginModal";
+import SubscribersMonitoringPortal from "./components/SubscribersMonitoringPortal";
 import { AppData, SubscriberState } from "./types";
 import { fetchAllAppDataDirect } from "./utils/sheetParser";
 import { loginSubscriberBridge, checkSubscriberAccountStatus, fetchFormQuestionsBridge, DEFAULT_SCRIPT_URL, DEFAULT_SPREADSHEET_ID, DEFAULT_DRIVE_FOLDER_ID } from "./utils/googleBackendBridge";
@@ -98,6 +99,7 @@ export default function App() {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMonitoringOpen, setIsMonitoringOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Configuration state with robust persistence & fallback for Vercel/GitHub Pages
@@ -342,6 +344,24 @@ export default function App() {
             setIsAdminLoginOpen(true);
           }
         }
+
+        // 5. Standalone Subscribers & Registrations Monitoring Link
+        // (?monitoring=true | ?subscribers=manage | ?subscribers=admin | ?followup=true | #monitoring | #subscribers-admin | #followup)
+        const isMonitoringRequested =
+          searchParams.get("monitoring") === "true" ||
+          searchParams.get("monitoring") === "1" ||
+          searchParams.get("subscribers") === "manage" ||
+          searchParams.get("subscribers") === "admin" ||
+          searchParams.get("followup") === "true" ||
+          searchParams.get("page") === "monitoring" ||
+          searchParams.get("page") === "subscribers" ||
+          hash === "#monitoring" ||
+          hash === "#subscribers-admin" ||
+          hash === "#followup";
+
+        if (isMonitoringRequested) {
+          setIsMonitoringOpen(true);
+        }
       } catch (e) {
         console.warn("Error parsing URL direct routes:", e);
       }
@@ -352,6 +372,7 @@ export default function App() {
     window.addEventListener("popstate", checkDirectRoutes);
 
     // Keyboard shortcut for discrete Admin login: Ctrl + Shift + A or Alt + A
+    // and Monitoring Portal: Ctrl + Shift + M or Alt + M
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey && e.shiftKey && (e.key === "A" || e.key === "a")) || (e.altKey && (e.key === "a" || e.key === "A"))) {
         e.preventDefault();
@@ -364,6 +385,11 @@ export default function App() {
         } else {
           setIsAdminLoginOpen(true);
         }
+      }
+
+      if ((e.ctrlKey && e.shiftKey && (e.key === "M" || e.key === "m")) || (e.altKey && (e.key === "m" || e.key === "M"))) {
+        e.preventDefault();
+        setIsMonitoringOpen(true);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -697,6 +723,7 @@ export default function App() {
         onLogout={handleLogout}
         onOpenDashboard={() => setIsDashboardOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenMonitoring={() => setIsMonitoringOpen(true)}
         isAdmin={isAdminLoggedIn}
         onAdminLogout={handleAdminLogout}
         customTexts={appData?.customTexts}
@@ -897,8 +924,8 @@ export default function App() {
             <p className="text-slate-600 font-sans text-[10px]">
               {t("navbar_brand_title", appData?.customTexts?.navbarTitle || "مؤسسة يوسف ذنون")} {t("navbar_brand_subtitle", appData?.customTexts?.navbarSubtitle || "للخط العربي والآثار الإسلامية")}
             </p>
-            {/* Discrete Admin Link trigger */}
-            <div className="pt-2 flex justify-center md:justify-start">
+            {/* Discrete Admin Link trigger & Monitoring Portal */}
+            <div className="pt-2 flex justify-center md:justify-start items-center gap-4">
               <button
                 onClick={() => {
                   if (isAdminLoggedIn) {
@@ -912,6 +939,15 @@ export default function App() {
               >
                 <Lock className="w-3 h-3 text-slate-600 hover:text-amber-500" />
                 <span>{isAdminLoggedIn ? t("admin_connected", "لوحة المشرف (متصل)") : t("admin_login_btn", "دخول المشرف")}</span>
+              </button>
+
+              <button
+                onClick={() => setIsMonitoringOpen(true)}
+                className="text-slate-700 hover:text-emerald-500/80 transition-colors text-[10px] flex items-center gap-1 opacity-70 hover:opacity-100 font-mono"
+                title="لوحة متابعة وسجل المشتركين المستقلة"
+              >
+                <Users className="w-3 h-3 text-slate-600 hover:text-emerald-500" />
+                <span>متابعة المشتركين</span>
               </button>
             </div>
           </div>
@@ -934,6 +970,21 @@ export default function App() {
         currentDriveFolderId={currentDriveFolderId}
         onSaveConfig={handleSaveConfig}
         onAdminLogout={handleAdminLogout}
+        onOpenMonitoring={() => setIsMonitoringOpen(true)}
+      />
+
+      {/* Standalone Subscribers & Registrations Monitoring Portal */}
+      <SubscribersMonitoringPortal
+        isOpen={isMonitoringOpen}
+        onClose={() => setIsMonitoringOpen(false)}
+        currentScriptUrl={currentScriptUrl}
+        currentSpreadsheetId={currentSpreadsheetId}
+        isAdminLoggedIn={isAdminLoggedIn}
+        onAdminLoginSuccess={() => {
+          setIsAdminLoggedIn(true);
+        }}
+        onAdminLogout={handleAdminLogout}
+        onOpenFullSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* 5. Subscriber Login Modal */}

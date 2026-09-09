@@ -181,7 +181,16 @@ export default function SubscriberFullPage({
   institutionTitle,
   socialLinks,
 }: SubscriberFullPageProps) {
-  const { t, dir } = useLanguage();
+  const { t, dir, currentLang, setLanguage } = useLanguage();
+
+  // Multi-language text resolver for subscriber content
+  const getLocalizedText = (arText?: string, enText?: string, thText?: string) => {
+    if (currentLang === "en" && enText) return enText;
+    if (currentLang === "th" && thText) return thText;
+    if (!arText) return "";
+    return t(arText, arText);
+  };
+
   const [topicContent, setTopicContent] = useState<SubscriberTopicContent | null>(subscriber.content || null);
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(
     !subscriber.content || !subscriber.content.cards || subscriber.content.cards.length === 0
@@ -311,6 +320,37 @@ export default function SubscriberFullPage({
 
           {/* Subscriber Status, Refresh & Exit Button */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* 3-Language Selector Pill */}
+            <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl p-1 text-xs">
+              <button
+                onClick={() => setLanguage("ar")}
+                className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  currentLang === "ar" ? "bg-amber-500 text-slate-950 shadow-sm" : "text-slate-400 hover:text-white"
+                }`}
+                title="العربية"
+              >
+                عربي
+              </button>
+              <button
+                onClick={() => setLanguage("en")}
+                className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  currentLang === "en" ? "bg-amber-500 text-slate-950 shadow-sm" : "text-slate-400 hover:text-white"
+                }`}
+                title="English"
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLanguage("th")}
+                className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  currentLang === "th" ? "bg-amber-500 text-slate-950 shadow-sm" : "text-slate-400 hover:text-white"
+                }`}
+                title="ภาษาไทย"
+              >
+                ไทย
+              </button>
+            </div>
+
             <div className="hidden sm:flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-full px-4 py-1.5 text-xs">
               <CheckCircle className="w-4 h-4 text-emerald-400" />
               <span className="text-slate-200 font-bold">
@@ -394,23 +434,23 @@ export default function SubscriberFullPage({
               <div className="space-y-3 max-w-4xl">
                 {/* Column B: Main Topic Title */}
                 <h2 className="font-serif font-black text-2xl sm:text-3xl md:text-4xl text-amber-400 leading-tight">
-                  {activeContent?.title ? t(activeContent.title, activeContent.title) : t("subscriber_custom_content_title", "المحتوى الخاص والدروس المخصصة")}
+                  {getLocalizedText(activeContent?.title, activeContent?.titleEn, activeContent?.titleTh) || t("subscriber_custom_content_title", "المحتوى الخاص والدروس المخصصة")}
                 </h2>
 
                 {/* Column C: Topic Description & Header */}
                 {activeContent?.description && (
                   <p className="text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed whitespace-pre-line">
-                    {t(activeContent.description, activeContent.description)}
+                    {getLocalizedText(activeContent?.description, activeContent?.descriptionEn, activeContent?.descriptionTh)}
                   </p>
                 )}
               </div>
 
               {/* Column E: Topic Badge */}
-              {activeContent?.badge && (
+              {(activeContent?.badge || activeContent?.badgeEn || activeContent?.badgeTh) && (
                 <div className="shrink-0 pt-1">
                   <span className="inline-flex items-center gap-1.5 bg-amber-500/15 text-amber-300 text-xs sm:text-sm font-bold py-2 px-4 rounded-2xl border border-amber-500/30 shadow-md">
                     <Award className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>{t(activeContent.badge, activeContent.badge)}</span>
+                    <span>{getLocalizedText(activeContent?.badge, activeContent?.badgeEn, activeContent?.badgeTh)}</span>
                   </span>
                 </div>
               )}
@@ -427,14 +467,14 @@ export default function SubscriberFullPage({
                     {/* Card Title */}
                     <div className="mb-3">
                       <h4 className="font-serif font-bold text-amber-400 text-xl leading-snug">
-                        {t(card.title, card.title)}
+                        {getLocalizedText(card.title, card.titleEn, card.titleTh)}
                       </h4>
                     </div>
 
                     {/* Description */}
                     {card.description && (
                       <p className="text-slate-300 text-sm leading-relaxed mb-4 whitespace-pre-line">
-                        {t(card.description, card.description)}
+                        {getLocalizedText(card.description, card.descriptionEn, card.descriptionTh)}
                       </p>
                     )}
 
@@ -454,7 +494,15 @@ export default function SubscriberFullPage({
                         className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 text-sm font-bold py-3 px-5 rounded-2xl text-center shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <ExternalLink className="w-4.5 h-4.5" />
-                        <span>{card.buttonText ? t(card.buttonText, card.buttonText) : t("subscriber_open_link_btn", "فتح الرابط / المورد المرفق")}</span>
+                        <span>
+                          {card.buttonText
+                            ? t(card.buttonText, card.buttonText)
+                            : currentLang === "en"
+                            ? "Open Resource / Link"
+                            : currentLang === "th"
+                            ? "เปิดทรัพยากร / ลิงก์"
+                            : t("subscriber_open_link_btn", "فتح الرابط / المورد المرفق")}
+                        </span>
                       </a>
                     </div>
                   )}

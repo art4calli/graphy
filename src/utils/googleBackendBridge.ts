@@ -15,7 +15,7 @@ import { RegistrationQuestion, RegistrationAnswerRecord, SettingsSubscriberRecor
 import { formatImageUrl } from "./imageUtils";
 import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwwdagWtweG3sd5WjYDTEBQSzie9OUGZ381vVRWAM40KN9vJSOk23Dht8zHeFWnBEboJA/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzwdupPOk2KJr9MzfZM_JTA8GCbQFx8mlFH6cCxn0JLcH6J8g_yfrKmMTt08zZpLEcZ/exec";
 export const DEFAULT_SPREADSHEET_ID = "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 export const DEFAULT_DRIVE_FOLDER_ID = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
 
@@ -1019,18 +1019,46 @@ export function isTopicMatching(targetTopic: any, rowTopic: any): boolean {
   return false;
 }
 
+export const SUBSCRIBER_CONTENT_LOCAL_STORAGE_KEY = "thnoon_subscriber_content_records";
+
+export function getLocalSubscriberTopics(): SubscriberTopicContent[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(SUBSCRIBER_CONTENT_LOCAL_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
+
+export function saveLocalSubscriberTopics(topics: SubscriberTopicContent[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(SUBSCRIBER_CONTENT_LOCAL_STORAGE_KEY, JSON.stringify(topics));
+  } catch (e) {}
+}
+
 /**
  * Universal, high-resilience SubscriberContent reader.
  * Reads cards, covers, videos, links, badges from Google Sheets SubscriberContent tab.
- * Supports mobile browsers, tablets, desktop, Vercel static hosting and local container.
+ * Prioritizes local system cache for lightning speed and seamless translations.
  */
 export async function fetchSubscriberTopicContent(
   topicId: string,
   explicitSpreadsheetId?: string
 ): Promise<SubscriberTopicContent | null> {
-  const targetSpreadsheetId = getActiveSpreadsheetId(explicitSpreadsheetId);
   const cleanTargetTopic = normalizeTopicDigitStr(topicId) || "1";
 
+  // 1. فحص فوري وسريع من النظام الداخلي أولاً لضمان فتح الصفحة في 0 ثانية وبترجمة دقيقة
+  const localList = getLocalSubscriberTopics();
+  const matchedLocal = localList.find((t) => isTopicMatching(cleanTargetTopic, t.topicId));
+  if (matchedLocal && matchedLocal.cards && matchedLocal.cards.length > 0) {
+    return matchedLocal;
+  }
+
+  const targetSpreadsheetId = getActiveSpreadsheetId(explicitSpreadsheetId);
   const sheetNames = ["SubscriberContent", "Subscriber Content", "subscribercontent", "محتوى المشتركين", "المحتوى", "محتوى المشترك"];
 
   for (const sheetName of sheetNames) {
@@ -1859,5 +1887,317 @@ export async function fetchSiteTranslationsBridge(
 
   return { success: false, translations: [] };
 }
+
+/**
+ * Universal Subscriber Topics Fetcher Bridge
+ * Reads all rows from SubscriberContent tab, merging with local translations cache.
+ */
+export async function fetchAllSubscriberTopicsBridge(
+  explicitSpreadsheetId?: string,
+  explicitScriptUrl?: string
+): Promise<{ success: boolean; topics: SubscriberTopicContent[]; message?: string }> {
+  const targetSpreadsheetId = getActiveSpreadsheetId(explicitSpreadsheetId);
+  const targetScriptUrl = getActiveScriptUrl(explicitScriptUrl);
+  const existingLocal = getLocalSubscriberTopics();
+  const localMap = new Map<string, SubscriberTopicContent>();
+  existingLocal.forEach((t) => {
+    if (t.topicId) localMap.set(normalizeTopicDigitStr(t.topicId), t);
+  });
+
+  // 1. Try reading via GViz direct from SubscriberContent sheet
+  const sheetNames = ["SubscriberContent", "Subscriber Content", "subscribercontent", "محتوى المشتركين", "المحتوى"];
+  for (const sheetName of sheetNames) {
+    try {
+      const contentUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&t=${Date.now()}`;
+      const res = await fetch(contentUrl, { cache: "no-store" });
+      if (res.ok) {
+        const text = await res.text();
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        if (start !== -1 && end !== -1) {
+          const json = JSON.parse(text.substring(start, end + 1));
+          if (json && json.table && json.table.rows && json.table.rows.length > 0) {
+            const fetchedTopics: SubscriberTopicContent[] = [];
+
+            json.table.rows.forEach((rowItem: any, rIdx: number) => {
+              const cr = rowItem?.c || [];
+              const getVal = (idx: number) => {
+                if (!cr[idx] || cr[idx].v === null || cr[idx].v === undefined) return "";
+                return cr[idx].f !== undefined ? cr[idx].f.toString().trim() : cr[idx].v.toString().trim();
+              };
+
+              const rawTopicId = getVal(0);
+              const cleanTopicId = normalizeTopicDigitStr(rawTopicId) || (rIdx + 1).toString();
+              const title = getVal(1) || `صفحة المشترك رقم ${cleanTopicId}`;
+              const description = getVal(2);
+              const rawCover = getVal(3);
+              const badge = getVal(4);
+              const coverImage = (rawCover && rawCover !== "-") ? formatImageUrl(rawCover) : undefined;
+
+              const cards: SubscriberCard[] = [];
+              for (let c = 0; c < 12; c++) {
+                const baseIdx = 5 + (c * 4);
+                const cardTitle = getVal(baseIdx);
+                const cardDesc = getVal(baseIdx + 1);
+                const cardMediaRaw = getVal(baseIdx + 2);
+                const cardLinkUrl = getVal(baseIdx + 3);
+
+                if (cardTitle || cardDesc || cardMediaRaw || cardLinkUrl) {
+                  const mediaItems = cardMediaRaw
+                    ? cardMediaRaw
+                        .split(/[\n,\|]+/)
+                        .map((s: string) => s.trim())
+                        .filter(Boolean)
+                        .map((rawUrl: string) => ({
+                          url: formatImageUrl(rawUrl),
+                          type: rawUrl.match(/(youtube\.com|youtu\.be|vimeo\.com|\.(mp4|webm|ogg|mov)$)/i) ? ("video" as const) : ("image" as const)
+                        }))
+                    : [];
+
+                  cards.push({
+                    id: `card_${c + 1}`,
+                    title: cardTitle || `المحور ${c + 1}`,
+                    description: cardDesc,
+                    media: mediaItems,
+                    mediaUrl: cardMediaRaw || undefined,
+                    linkUrl: (cardLinkUrl && cardLinkUrl !== "-") ? cardLinkUrl : undefined,
+                    buttonText: (cardLinkUrl && cardLinkUrl !== "-") ? "فتح الرابط / المورد المرفق" : undefined
+                  });
+                }
+              }
+
+              // Merge with local translations if available
+              const cached = localMap.get(cleanTopicId);
+              const topicRecord: SubscriberTopicContent = {
+                topicId: cleanTopicId,
+                rowIndex: rIdx + 2,
+                title,
+                titleEn: cached?.titleEn,
+                titleTh: cached?.titleTh,
+                description,
+                descriptionEn: cached?.descriptionEn,
+                descriptionTh: cached?.descriptionTh,
+                coverImage,
+                badge: (badge && badge !== "-") ? badge : undefined,
+                badgeEn: cached?.badgeEn,
+                badgeTh: cached?.badgeTh,
+                cards: cards.map((cd, cdIdx) => {
+                  const cachedCard = cached?.cards?.[cdIdx];
+                  return {
+                    ...cd,
+                    titleEn: cachedCard?.titleEn,
+                    titleTh: cachedCard?.titleTh,
+                    descriptionEn: cachedCard?.descriptionEn,
+                    descriptionTh: cachedCard?.descriptionTh
+                  };
+                }),
+                updatedAt: cached?.updatedAt || new Date().toISOString()
+              };
+
+              fetchedTopics.push(topicRecord);
+            });
+
+            if (fetchedTopics.length > 0) {
+              saveLocalSubscriberTopics(fetchedTopics);
+              return { success: true, topics: fetchedTopics };
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("GViz fetch error for SubscriberContent:", e);
+    }
+  }
+
+  // 2. Try Apps Script GET
+  try {
+    const getUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}action=getSubscriberContent&t=${Date.now()}`;
+    const res = await fetch(getUrl);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.records) && data.records.length > 0) {
+        const gasTopics: SubscriberTopicContent[] = data.records.map((r: any) => {
+          const cleanTopicId = normalizeTopicDigitStr(r.topicId) || "1";
+          const cached = localMap.get(cleanTopicId);
+          return {
+            topicId: cleanTopicId,
+            rowIndex: r.rowIndex,
+            title: r.title,
+            titleEn: cached?.titleEn,
+            titleTh: cached?.titleTh,
+            description: r.description,
+            descriptionEn: cached?.descriptionEn,
+            descriptionTh: cached?.descriptionTh,
+            coverImage: r.coverImage,
+            badge: r.badge,
+            badgeEn: cached?.badgeEn,
+            badgeTh: cached?.badgeTh,
+            cards: (r.cards || []).map((c: any, cIdx: number) => {
+              const cachedCard = cached?.cards?.[cIdx];
+              return {
+                id: c.id || `card_${cIdx + 1}`,
+                title: c.title,
+                titleEn: cachedCard?.titleEn,
+                titleTh: cachedCard?.titleTh,
+                description: c.description,
+                descriptionEn: cachedCard?.descriptionEn,
+                descriptionTh: cachedCard?.descriptionTh,
+                mediaUrl: c.mediaUrl,
+                media: c.mediaUrl ? [{ url: formatImageUrl(c.mediaUrl), type: "image" as const }] : [],
+                linkUrl: c.linkUrl
+              };
+            }),
+            updatedAt: cached?.updatedAt || new Date().toISOString()
+          };
+        });
+
+        saveLocalSubscriberTopics(gasTopics);
+        return { success: true, topics: gasTopics };
+      }
+    }
+  } catch (e) {}
+
+  // 3. Fallback to local storage
+  if (existingLocal.length > 0) {
+    return { success: true, topics: existingLocal };
+  }
+
+  // Initial default starter page if completely empty
+  const defaultStarter: SubscriberTopicContent[] = [
+    {
+      topicId: "1",
+      rowIndex: 2,
+      title: "دورة خط الرقعة والديواني للمشتركين",
+      titleEn: "Ruq'ah & Diwani Calligraphy Course for Subscribers",
+      titleTh: "หลักสูตรอักษรวิจิตร รุกอะฮ์ และ ดิวานี สำหรับสมาชิก",
+      description: "أهلاً بك في صفحتك الخاصة. تجد هنا كافة الدروس والمحاور التعليمية المخصصة لاشتراكك مع روابط التطبيقات والمتابعة المباشرة.",
+      descriptionEn: "Welcome to your personal learning page. Find all lessons, resources, and direct follow-up links.",
+      descriptionTh: "ยินดีต้อนรับสู่หน้าการเรียนรู้ส่วนบุคคลของคุณ พบกับบทเรียน ทรัพยากร และลิงก์ติดตามทั้งหมด",
+      badge: "دورة تدريبية متقدمة",
+      badgeEn: "Advanced Training Course",
+      badgeTh: "หลักสูตรการฝึกอบรมขั้นสูง",
+      cards: [
+        {
+          id: "card_1",
+          title: "الدرس الأول: القواعد الأساسية والموازين",
+          titleEn: "Lesson 1: Fundamental Rules & Proportions",
+          titleTh: "บทเรียนที่ 1: กฎพื้นฐานและสัดส่วน",
+          description: "شرح شامل لحركات الحروف والميزان النقطي لمبتدئي خط الرقعة.",
+          descriptionEn: "Comprehensive explanation of letter strokes and point scale.",
+          descriptionTh: "คำอธิบายที่ครอบคลุมเกี่ยวกับจังหวะตัวอักษรและมาตราส่วนจุด",
+          media: [],
+          mediaUrl: "",
+          linkUrl: ""
+        }
+      ],
+      updatedAt: new Date().toISOString()
+    }
+  ];
+  saveLocalSubscriberTopics(defaultStarter);
+  return { success: true, topics: defaultStarter };
+}
+
+/**
+ * Universal Subscriber Topic Saver Bridge
+ * Saves the page into internal fast storage (instant UI update)
+ * AND writes the Arabic text + cards into Google Sheets (SubscriberContent sheet) via Google Apps Script.
+ */
+export async function saveSubscriberTopicBridge(
+  topic: SubscriberTopicContent,
+  explicitScriptUrl?: string
+): Promise<{ success: boolean; message?: string; topic?: SubscriberTopicContent }> {
+  const targetScriptUrl = getActiveScriptUrl(explicitScriptUrl);
+  const cleanTopicId = normalizeTopicDigitStr(topic.topicId) || "1";
+
+  // 1. UPDATE LOCAL SYSTEM CACHE IMMEDIATELY (ZERO LATENCY FOR SUBSCRIBERS)
+  const currentList = getLocalSubscriberTopics();
+  const existingIdx = currentList.findIndex((t) => isTopicMatching(cleanTopicId, t.topicId));
+  const updatedTopic: SubscriberTopicContent = {
+    ...topic,
+    topicId: cleanTopicId,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (existingIdx !== -1) {
+    currentList[existingIdx] = updatedTopic;
+  } else {
+    currentList.push(updatedTopic);
+  }
+  saveLocalSubscriberTopics(currentList);
+
+  // 2. PREPARE PAYLOAD FOR GOOGLE APPS SCRIPT (Arabic content + cards recorded permanently)
+  const postPayload = {
+    topicId: cleanTopicId,
+    rowIndex: topic.rowIndex || (existingIdx !== -1 ? currentList[existingIdx].rowIndex : undefined),
+    title: topic.title,
+    description: topic.description,
+    coverImage: topic.coverImage || "",
+    badge: topic.badge || "",
+    cards: (topic.cards || []).map((c) => ({
+      title: c.title,
+      description: c.description,
+      mediaUrl: c.mediaUrl || (c.media && c.media[0] ? c.media[0].url : "") || "",
+      linkUrl: c.linkUrl || ""
+    }))
+  };
+
+  // 3. Optional local express proxy
+  try {
+    fetch("/api/subscriber-content/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...postPayload, scriptUrl: targetScriptUrl })
+    }).catch(() => {});
+  } catch (e) {}
+
+  // 4. DIRECT GOOGLE APPS SCRIPT POST
+  const result = await executeAppsScriptPost("saveSubscriberContent", postPayload, targetScriptUrl);
+  if (result.success && result.data && result.data.success) {
+    if (result.data.rowIndex && existingIdx !== -1) {
+      currentList[existingIdx].rowIndex = result.data.rowIndex;
+      saveLocalSubscriberTopics(currentList);
+    }
+    return {
+      success: true,
+      message: result.data.message || "تم حفظ محتوى الصفحة بنجاح في النظام وفي قوقل شيت!",
+      topic: updatedTopic
+    };
+  }
+
+  return {
+    success: true,
+    message: "تم حفظ المحتوى في النظام الداخلي بنجاح!",
+    topic: updatedTopic
+  };
+}
+
+/**
+ * Universal Subscriber Topic Deletion Bridge
+ */
+export async function deleteSubscriberTopicBridge(
+  topicId: string,
+  rowIndex?: number,
+  explicitScriptUrl?: string
+): Promise<{ success: boolean; message?: string }> {
+  const targetScriptUrl = getActiveScriptUrl(explicitScriptUrl);
+  const cleanTopicId = normalizeTopicDigitStr(topicId) || topicId;
+
+  // 1. Remove from local store
+  const currentList = getLocalSubscriberTopics();
+  const filtered = currentList.filter((t) => !isTopicMatching(cleanTopicId, t.topicId));
+  saveLocalSubscriberTopics(filtered);
+
+  // 2. Call Apps Script deletion
+  const result = await executeAppsScriptPost("deleteSubscriberContent", {
+    topicId: cleanTopicId,
+    rowIndex: rowIndex
+  }, targetScriptUrl);
+
+  return {
+    success: true,
+    message: result.data?.message || "تم حذف صفحة المحتوى بنجاح من النظام"
+  };
+}
+
 
 

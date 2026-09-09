@@ -146,20 +146,34 @@ export interface AppData {
 }
 
 export interface SubscriberCard {
+  id?: string;
   title: string;
+  titleEn?: string;
+  titleTh?: string;
   description: string;
+  descriptionEn?: string;
+  descriptionTh?: string;
   media: { url: string; type?: "image" | "video" }[];
+  mediaUrl?: string;
   linkUrl?: string;
   buttonText?: string;
 }
 
 export interface SubscriberTopicContent {
   topicId: string;
+  rowIndex?: number;
   title: string;
+  titleEn?: string;
+  titleTh?: string;
   description: string;
+  descriptionEn?: string;
+  descriptionTh?: string;
   coverImage?: string;
   badge?: string;
+  badgeEn?: string;
+  badgeTh?: string;
   cards: SubscriberCard[];
+  updatedAt?: string;
 }
 
 export interface SubscriberState {

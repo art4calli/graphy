@@ -118,6 +118,23 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify(transData))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    // جلب محتوى المشتركين عبر GET
+    if (action === "getSubscriberContent" || action === "getAllSubscriberContent") {
+      var getContentData = getSubscriberContentSheetData();
+      return ContentService.createTextOutput(JSON.stringify(getContentData))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // حذف صفحة محتوى مشترك عبر GET
+    if (action === "deleteSubscriberContent") {
+      var delContentGetRes = deleteSubscriberContentFromSheet({
+        topicId: e.parameter.topicId || "",
+        rowIndex: e.parameter.rowIndex || ""
+      });
+      return ContentService.createTextOutput(JSON.stringify(delContentGetRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
   }
 
   // الوضع الافتراضي: جلب البيانات الإجمالية للموقع
@@ -291,6 +308,27 @@ function doPost(e) {
     else if (action === "getSiteTranslations" || action === "getTranslations") {
       var getTransRes = getSiteTranslationsSheetData();
       return ContentService.createTextOutput(JSON.stringify(getTransRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ق) جلب محتوى وصفحات المشتركين من ورقة SubscriberContent
+    else if (action === "getSubscriberContent" || action === "getAllSubscriberContent") {
+      var getSubContentRes = getSubscriberContentSheetData();
+      return ContentService.createTextOutput(JSON.stringify(getSubContentRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ر) حفظ أو تحديث صفحة محتوى مشترك في ورقة SubscriberContent
+    else if (action === "saveSubscriberContent" || action === "updateSubscriberContent" || action === "addSubscriberContent") {
+      var saveSubContentRes = saveSubscriberContentToSheet(postData);
+      return ContentService.createTextOutput(JSON.stringify(saveSubContentRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ش) حذف صفحة محتوى مشترك من ورقة SubscriberContent
+    else if (action === "deleteSubscriberContent") {
+      var delSubContentRes = deleteSubscriberContentFromSheet(postData);
+      return ContentService.createTextOutput(JSON.stringify(delSubContentRes))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -3230,6 +3268,242 @@ function saveSiteTranslationsToSheet(payload) {
     };
   } catch (err) {
     Logger.log("saveSiteTranslationsToSheet error: " + err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// 18. دالة جلب محتوى وصفحات المشتركين من ورقة SubscriberContent
+function getSubscriberContentSheetData() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = "SubscriberContent";
+    var sheet = ss.getSheetByName(sheetName) || ss.getSheetByName("محتوى المشتركين") || ss.getSheetByName("المحتوى");
+    if (!sheet) {
+      return { success: true, records: [], total: 0, message: "ورقة SubscriberContent غير موجودة بعد" };
+    }
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = Math.max(sheet.getLastColumn(), 45);
+    if (lastRow < 2) {
+      return { success: true, records: [], total: 0, message: "لا توجد صفحات في ورقة SubscriberContent" };
+    }
+
+    var rows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var records = [];
+
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var topicId = (r[0] !== null && r[0] !== undefined) ? r[0].toString().trim() : (i + 1).toString();
+      var title = (r[1] !== null && r[1] !== undefined) ? r[1].toString().trim() : "";
+      var description = (r[2] !== null && r[2] !== undefined) ? r[2].toString().trim() : "";
+      var coverImage = (r[3] !== null && r[3] !== undefined && r[3].toString().trim() !== "-") ? r[3].toString().trim() : "";
+      var badge = (r[4] !== null && r[4] !== undefined && r[4].toString().trim() !== "-") ? r[4].toString().trim() : "";
+
+      if (!topicId && !title && !description) continue;
+
+      var cards = [];
+      for (var k = 0; k < 12; k++) {
+        var baseIdx = 5 + (k * 4);
+        var cTitle = (r[baseIdx] !== null && r[baseIdx] !== undefined) ? r[baseIdx].toString().trim() : "";
+        var cDesc = (r[baseIdx + 1] !== null && r[baseIdx + 1] !== undefined) ? r[baseIdx + 1].toString().trim() : "";
+        var cMedia = (r[baseIdx + 2] !== null && r[baseIdx + 2] !== undefined && r[baseIdx + 2].toString().trim() !== "-") ? r[baseIdx + 2].toString().trim() : "";
+        var cLink = (r[baseIdx + 3] !== null && r[baseIdx + 3] !== undefined && r[baseIdx + 3].toString().trim() !== "-") ? r[baseIdx + 3].toString().trim() : "";
+
+        if (cTitle || cDesc || cMedia || cLink) {
+          cards.push({
+            id: "card_" + (k + 1),
+            title: cTitle,
+            description: cDesc,
+            mediaUrl: cMedia,
+            linkUrl: cLink
+          });
+        }
+      }
+
+      records.push({
+        rowIndex: i + 2,
+        topicId: topicId,
+        title: title || ("صفحة المشترك رقم " + topicId),
+        description: description,
+        coverImage: coverImage,
+        badge: badge,
+        cards: cards
+      });
+    }
+
+    return {
+      success: true,
+      records: records,
+      total: records.length
+    };
+  } catch (err) {
+    Logger.log("getSubscriberContentSheetData error: " + err.message);
+    return { success: false, error: err.message, records: [], total: 0 };
+  }
+}
+
+// 19. دالة حفظ أو تحديث صفحة محتوى مشترك في ورقة SubscriberContent
+function saveSubscriberContentToSheet(postData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = "SubscriberContent";
+    var sheet = ss.getSheetByName(sheetName) || ss.getSheetByName("محتوى المشتركين");
+
+    // إنشاء الورقة إذا لم تكن موجودة مع إعداد الترويسة القياسية
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      var initialHeaders = ["رقم الصفحة (الصف)", "عنوان الصفحة (B)", "الوصف الترحيبي (C)", "صورة الغلاف (D)", "الشارة والتصنيف (E)"];
+      for (var h = 1; h <= 10; h++) {
+        initialHeaders.push("عنوان " + h, "وصف " + h, "وسائط " + h, "رابط " + h);
+      }
+      sheet.appendRow(initialHeaders);
+      sheet.getRange(1, 1, 1, initialHeaders.length).setFontWeight("bold").setBackground("#cfe2f3");
+      sheet.setFrozenRows(1);
+    }
+
+    var topicId = (postData.topicId !== undefined && postData.topicId !== null) ? postData.topicId.toString().trim() : "1";
+    var reqRowIndex = postData.rowIndex ? Number(postData.rowIndex) : -1;
+    var lastRow = sheet.getLastRow();
+    var lastCol = Math.max(sheet.getLastColumn(), 50);
+
+    var targetRow = -1;
+
+    // 1. البحث برقم الصف إن وجد
+    if (reqRowIndex >= 2 && reqRowIndex <= lastRow) {
+      var checkTopic = sheet.getRange(reqRowIndex, 1).getValue();
+      if (checkTopic && checkTopic.toString().trim() === topicId) {
+        targetRow = reqRowIndex;
+      }
+    }
+
+    // 2. البحث برقم الصفحة في العامود A
+    if (targetRow === -1 && lastRow >= 2) {
+      var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var r = 0; r < colA.length; r++) {
+        var cellVal = colA[r][0] ? colA[r][0].toString().trim() : "";
+        if (cellVal === topicId) {
+          targetRow = r + 2;
+          break;
+        }
+      }
+    }
+
+    // إذا لم نجد صفاً مطابقاً، ننشئ صفاً جديداً في نهاية الورقة
+    if (targetRow === -1) {
+      targetRow = lastRow + 1;
+    }
+
+    // تجهيز مصفوفة القيم للصف
+    var rowValues = [];
+    for (var c = 0; c < lastCol; c++) {
+      rowValues.push("");
+    }
+
+    // إذا كان الصف موجوداً، نقرأ قيمه الحالية أولاً للحفاظ على أي خانات أخرى
+    if (targetRow <= lastRow) {
+      var existingRowVals = sheet.getRange(targetRow, 1, 1, lastCol).getValues()[0];
+      for (var ex = 0; ex < existingRowVals.length; ex++) {
+        rowValues[ex] = existingRowVals[ex];
+      }
+    }
+
+    // العامود A: رقم الصفحة
+    rowValues[0] = topicId;
+    // القسم الأول: الهيدر B:E
+    rowValues[1] = postData.title !== undefined ? postData.title.toString().trim() : (rowValues[1] || "");
+    rowValues[2] = postData.description !== undefined ? postData.description.toString().trim() : (rowValues[2] || "");
+    rowValues[3] = postData.coverImage !== undefined ? postData.coverImage.toString().trim() : (rowValues[3] || "");
+    rowValues[4] = postData.badge !== undefined ? postData.badge.toString().trim() : (rowValues[4] || "");
+
+    // مسح خانات البطاقات القديمة قبل كتابة الجديدة لضمان النظافة
+    for (var clr = 5; clr < lastCol; clr++) {
+      rowValues[clr] = "";
+    }
+
+    // القسم الثاني: البطاقات والمحاور F:I / J:M / N:Q ...
+    var cards = postData.cards || [];
+    if (Array.isArray(cards)) {
+      for (var k = 0; k < cards.length; k++) {
+        var card = cards[k];
+        if (!card) continue;
+        var bIdx = 5 + (k * 4);
+        if (bIdx + 3 >= rowValues.length) {
+          while (rowValues.length <= bIdx + 4) {
+            rowValues.push("");
+          }
+        }
+        rowValues[bIdx] = (card.title || "").toString().trim();
+        rowValues[bIdx + 1] = (card.description || "").toString().trim();
+        rowValues[bIdx + 2] = (card.mediaUrl || (card.media && card.media[0] ? card.media[0].url : "") || "").toString().trim();
+        rowValues[bIdx + 3] = (card.linkUrl || "").toString().trim();
+      }
+    }
+
+    // كتابة الصف في الشيت
+    var writeColCount = Math.max(rowValues.length, sheet.getLastColumn());
+    while (rowValues.length < writeColCount) {
+      rowValues.push("");
+    }
+    sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      message: "تم حفظ وتحديث صفحة المحتوى بنجاح في ورقة SubscriberContent (الصف " + targetRow + ")",
+      rowIndex: targetRow,
+      topicId: topicId
+    };
+  } catch (err) {
+    Logger.log("saveSubscriberContentToSheet error: " + err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// 20. دالة حذف صفحة محتوى مشترك من ورقة SubscriberContent
+function deleteSubscriberContentFromSheet(postData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetName = "SubscriberContent";
+    var sheet = ss.getSheetByName(sheetName) || ss.getSheetByName("محتوى المشتركين");
+    if (!sheet) {
+      return { success: false, message: "ورقة SubscriberContent غير موجودة" };
+    }
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      return { success: false, message: "لا توجد صفوف للحذف" };
+    }
+
+    var topicId = postData.topicId ? postData.topicId.toString().trim() : "";
+    var reqRowIndex = postData.rowIndex ? Number(postData.rowIndex) : -1;
+    var targetRow = -1;
+
+    if (reqRowIndex >= 2 && reqRowIndex <= lastRow) {
+      targetRow = reqRowIndex;
+    } else if (topicId) {
+      var colA = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var r = 0; r < colA.length; r++) {
+        if (colA[r][0] && colA[r][0].toString().trim() === topicId) {
+          targetRow = r + 2;
+          break;
+        }
+      }
+    }
+
+    if (targetRow === -1) {
+      return { success: false, message: "لم يتم العثور على الصفحة المراد حذفها" };
+    }
+
+    sheet.deleteRow(targetRow);
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      message: "تم حذف صفحة المحتوى بنجاح من ورقة SubscriberContent",
+      deletedRowIndex: targetRow
+    };
+  } catch (err) {
+    Logger.log("deleteSubscriberContentFromSheet error: " + err.message);
     return { success: false, error: err.message };
   }
 }
