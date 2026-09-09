@@ -1298,18 +1298,95 @@ export default function RegistrationModal({
             initial={{ scale: 0.95, y: 15, opacity: 0 }}
             animate={{ scale: 1, y: 0, opacity: 1 }}
             exit={{ scale: 0.95, y: 15, opacity: 0 }}
-            className={`relative w-full max-w-2xl bg-slate-900 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl z-10 overflow-hidden flex flex-col h-[94dvh] sm:h-auto sm:max-h-[90vh] ${
+            className={`relative w-full max-w-2xl bg-slate-900 border border-amber-500/30 rounded-2xl sm:rounded-3xl p-3 sm:p-7 shadow-2xl z-10 overflow-hidden flex flex-col h-[95dvh] sm:h-auto sm:max-h-[90vh] ${
               formLang === "ar" ? "text-right" : "text-left"
             }`}
           >
             {/* Top Golden Ribbon */}
             <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
 
-            {/* Action Buttons: Copy Direct Link, Refresh, and Close */}
+            {/* Mobile Top Controls Bar: Form Link (Icon only) + Language Flags + Close (3 Controls in 1 Row) */}
+            <div className="sm:hidden flex items-center justify-between gap-2 mb-2 z-20">
+              {/* زر رابط الاستمارة المباشر - أيقونة فقط في الجوال + زر التحديث */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleCopyDirectLink}
+                  title={formLang === "ar" ? "نسخ رابط الاستمارة المباشر لنشره للمشتركين" : "Copy direct form link to share"}
+                  className="p-2 bg-amber-500/15 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/30 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-center shrink-0"
+                >
+                  {copiedLink ? (
+                    <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
+                  ) : (
+                    <Share2 className="w-4 h-4" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={fetchQuestions}
+                  disabled={isLoadingQuestions}
+                  title="تحديث ومزامنة الأسئلة"
+                  className="p-2 bg-slate-800/80 hover:bg-amber-500 hover:text-slate-950 text-slate-400 rounded-xl transition-colors cursor-pointer disabled:opacity-50 border border-slate-700/60 shadow-sm"
+                >
+                  <RotateCw className={`w-3.5 h-3.5 ${isLoadingQuestions ? "animate-spin text-amber-400" : ""}`} />
+                </button>
+              </div>
+
+              {/* أزرار اللغة - علامات اللغة فقط بدون نصوص في الجوال */}
+              <div className="flex items-center gap-1 p-0.5 bg-slate-950/80 border border-slate-800 rounded-xl shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setFormLang("ar")}
+                  title="العربية"
+                  className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                    formLang === "ar"
+                      ? "bg-amber-500 text-slate-950 shadow-md font-black"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span className="text-sm">🇸🇦</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormLang("en")}
+                  title="English"
+                  className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                    formLang === "en"
+                      ? "bg-amber-500 text-slate-950 shadow-md font-black"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span className="text-sm">🇬🇧</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormLang("th")}
+                  title="ภาษาไทย"
+                  className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                    formLang === "th"
+                      ? "bg-amber-500 text-slate-950 shadow-md font-black"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  <span className="text-sm">🇹🇭</span>
+                </button>
+              </div>
+
+              {/* زر الإغلاق في الجوال */}
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 bg-slate-800/80 hover:bg-red-500 hover:text-white text-slate-400 rounded-xl transition-colors cursor-pointer border border-slate-700/60 shadow-sm shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Desktop Action Buttons: Copy Direct Link, Refresh, and Close */}
             <div
-              className={`absolute top-4 sm:top-5 ${
+              className={`hidden sm:flex absolute top-4 sm:top-5 ${
                 formLang === "ar" ? "left-4 sm:left-5" : "right-4 sm:right-5"
-              } flex items-center gap-1.5 sm:gap-2 z-20`}
+              } items-center gap-1.5 sm:gap-2 z-20`}
             >
               <button
                 type="button"
@@ -1346,19 +1423,20 @@ export default function RegistrationModal({
             </div>
 
             {/* Modal Header */}
-            <div className="text-center pt-2 pb-3.5 border-b border-slate-800 shrink-0">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-amber-500/20 shadow-sm">
+            <div className="text-center pt-1 sm:pt-2 pb-2.5 sm:pb-3.5 border-b border-slate-800 shrink-0">
+              {/* الأيقونة العلوية فوق النص - مخفية في الجوال وظاهرة في الكمبيوتر */}
+              <div className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/10 text-amber-400 rounded-2xl items-center justify-center mx-auto mb-2 border border-amber-500/20 shadow-sm">
                 <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <h3 className="font-serif font-black text-xl sm:text-2xl md:text-3xl text-amber-400">
+              <h3 className="font-serif font-black text-lg sm:text-2xl md:text-3xl text-amber-400">
                 {t.title}
               </h3>
-              <p className="text-slate-400 font-sans text-xs sm:text-sm mt-1 leading-relaxed max-w-md mx-auto line-clamp-2 sm:line-clamp-none">
+              <p className="hidden sm:block text-slate-400 font-sans text-xs sm:text-sm mt-1 leading-relaxed max-w-md mx-auto line-clamp-2 sm:line-clamp-none">
                 {t.subtitle}
               </p>
 
-              {/* Language Switcher Tabs */}
-              <div className="mt-2.5 sm:mt-3 flex items-center justify-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl w-fit mx-auto shadow-inner">
+              {/* Language Switcher Tabs (Desktop only) */}
+              <div className="hidden sm:flex mt-2.5 sm:mt-3 items-center justify-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl w-fit mx-auto shadow-inner">
                 <button
                   type="button"
                   onClick={() => setFormLang("ar")}
@@ -1398,7 +1476,7 @@ export default function RegistrationModal({
               </div>
 
               {isLoadingQuestions && (
-                <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-sans">
+                <div className="mt-1.5 sm:mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full font-sans">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   <span>{t.syncingQuestions}</span>
                 </div>
@@ -1408,7 +1486,7 @@ export default function RegistrationModal({
             {/* Body Form */}
             <div
               ref={modalBodyRef}
-              className="overflow-y-auto overscroll-contain pr-1 pl-1 sm:px-2 py-4 flex-1 min-h-0 space-y-4 sm:space-y-5 scrollbar-thin"
+              className="overflow-y-auto overscroll-contain pr-1 pl-1 sm:px-2 py-3 sm:py-4 flex-1 min-h-0 space-y-3 sm:space-y-5 scrollbar-thin"
             >
               {isSuccess ? (
                 /* SUCCESS VIEW */
