@@ -2450,6 +2450,16 @@ export async function deleteSubscriberTopicBridge(
 }
 
 /**
+ * Represents parsed Telegram bot URLs for both direct app protocol and web fallback
+ */
+export interface TelegramLinkPair {
+  appUrl: string;       // tg://resolve?domain=nuon2026_bot&start=student_XXXXXX
+  webUrl: string;       // https://t.me/nuon2026_bot?start=student_XXXXXX
+  domain: string;       // nuon2026_bot
+  startParam?: string;  // student_XXXXXX
+}
+
+/**
  * Resolves the dynamic Telegram activation link for a given subscriber registration ID.
  * Replaces 'student_XXXXXX' or '{id}' with the actual registration ID.
  */
@@ -2468,6 +2478,141 @@ export function getSubscriberTelegramLink(registrationId?: string): string {
     .replace(/\{id\}/g, cleanId)
     .replace(/\{\{id\}\}/g, cleanId)
     .replace(/\{\{registrationId\}\}/g, cleanId);
+}
+
+/**
+ * Parses any Telegram URL (https://t.me/... or tg://...) and returns both
+ * native app URL (tg://resolve?domain=...&start=...) and web fallback URL (https://t.me/...).
+ */
+export function parseTelegramUrls(rawUrl?: string, registrationId?: string): TelegramLinkPair {
+  let activeEmailConfig: any = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("thnoon_subscriber_email_config");
+      if (stored) activeEmailConfig = JSON.parse(stored);
+    } catch (e) {}
+  }
+  const baseTpl = activeEmailConfig?.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX";
+  const cleanId = (registrationId || "").toString().trim() || "XXXXXX";
+
+  let resolved = (rawUrl && (rawUrl.includes("t.me") || rawUrl.includes("tg://")) ? rawUrl : baseTpl)
+    .replace(/XXXXXX/g, cleanId)
+    .replace(/\{id\}/g, cleanId)
+    .replace(/\{\{id\}\}/g, cleanId)
+    .replace(/\{\{registrationId\}\}/g, cleanId);
+
+  let domain = "nuon2026_bot";
+  let startParam: string | undefined = `student_${cleanId}`;
+
+  try {
+    if (resolved.startsWith("tg://")) {
+      const pseudo = resolved.replace("tg://resolve", "http://tg.local").replace("tg://", "http://tg.local/");
+      const u = new URL(pseudo);
+      domain = u.searchParams.get("domain") || domain;
+      const s = u.searchParams.get("start");
+      if (s) startParam = s;
+    } else {
+      const match = resolved.match(/(?:t\.me|telegram\.me)\/([a-zA-Z0-9_]+)(?:\?start=([a-zA-Z0-9_#-]+))?/i);
+      if (match) {
+        domain = match[1] || domain;
+        if (match[2]) startParam = match[2];
+      }
+    }
+  } catch (e) {}
+
+  const appUrl = startParam
+    ? `tg://resolve?domain=${domain}&start=${startParam}`
+    : `tg://resolve?domain=${domain}`;
+
+  const webUrl = startParam
+    ? `https://t.me/${domain}?start=${startParam}`
+    : `https://t.me/${domain}`;
+
+  return { appUrl, webUrl, domain, startParam };
+}
+
+/**
+ * Smart Deep Link for Telegram:
+ * 1. Tries to launch Telegram App directly via tg:// protocol scheme.
+ * 2. If user is on a device without Telegram installed, automatically falls back
+ *    to opening the web URL (https://t.me/...) in a new tab without showing errors.
+ */
+export function openTelegramSmartLink(
+  targetUrlOrRegId?: string,
+  explicitRegId?: string,
+  event?: React.MouseEvent
+): void {
+  if (event) {
+    try {
+      event.preventDefault();
+    } catch (e) {}
+  }
+
+  let rawUrl = targetUrlOrRegId;
+  let regId = explicitRegId;
+
+  if (!rawUrl || /^\d+$/.test(rawUrl)) {
+    regId = rawUrl || explicitRegId;
+    rawUrl = undefined;
+  }
+
+  const { appUrl, webUrl } = parseTelegramUrls(rawUrl, regId);
+
+  if (typeof window === "undefined") return;
+
+  const start = Date.now();
+  let appOpened = false;
+
+  const handleBlurOrHide = () => {
+    appOpened = true;
+    window.removeEventListener("blur", handleBlurOrHide);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.hidden || document.visibilityState === "hidden") {
+      appOpened = true;
+      window.removeEventListener("blur", handleBlurOrHide);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }
+  };
+
+  window.addEventListener("blur", handleBlurOrHide);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  // Attempt direct native app launch
+  try {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = appUrl;
+    } else {
+      // For desktop, create a hidden iframe or try location
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = appUrl;
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        try {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        } catch (e) {}
+      }, 2500);
+
+      // Also trigger navigation on desktop
+      window.location.href = appUrl;
+    }
+  } catch (err) {
+    console.warn("Direct tg scheme error:", err);
+  }
+
+  // Graceful fallback: If the page is still active/visible after 1200ms, open web URL
+  setTimeout(() => {
+    window.removeEventListener("blur", handleBlurOrHide);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+    if (!appOpened && !document.hidden && document.visibilityState === "visible") {
+      window.open(webUrl, "_blank", "noopener,noreferrer");
+    }
+  }, 1200);
 }
 
 

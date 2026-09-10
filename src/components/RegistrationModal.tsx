@@ -40,7 +40,9 @@ import {
   uploadFileToDriveBridge,
   fetchFormQuestionsBridge,
   DEFAULT_SCRIPT_URL,
-  DEFAULT_DRIVE_FOLDER_ID
+  DEFAULT_DRIVE_FOLDER_ID,
+  openTelegramSmartLink,
+  parseTelegramUrls
 } from "../utils/googleBackendBridge";
 
 export type FormLang = "ar" | "en" | "th";
@@ -1691,6 +1693,7 @@ export default function RegistrationModal({
                     const botTemplate = activeEmailConfig?.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX";
                     const studentRegId = successInfo.id || "202686124";
                     const studentTelegramLink = botTemplate.replace(/XXXXXX/g, studentRegId).replace(/{id}/g, studentRegId);
+                    const parsedUrls = parseTelegramUrls(studentTelegramLink, studentRegId);
 
                     const defaultDescAr = "اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:";
                     const defaultDescEn = "Tap the direct button below to link your account and receive real-time course updates via Telegram:";
@@ -1717,18 +1720,21 @@ export default function RegistrationModal({
                           {telegramDesc}
                         </p>
 
-                        {/* Interactive Direct Telegram Activation Button */}
+                        {/* Interactive Smart Deep Link Telegram Activation Button */}
                         <div className="pt-1">
                           <a
-                            href={studentTelegramLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-sky-600/30 hover:shadow-sky-500/40 transition-all cursor-pointer border border-sky-400/30"
+                            href={parsedUrls.appUrl}
+                            onClick={(e) => openTelegramSmartLink(studentTelegramLink, studentRegId, e)}
+                            className="w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-sky-600/30 hover:shadow-sky-500/40 transition-all cursor-pointer border border-sky-400/30 active:scale-[0.98]"
+                            title="فتح تطبيق تلغرام مباشرة"
                           >
                             <Send className="w-4.5 h-4.5 text-sky-200" />
                             <span>{telegramBtnText}</span>
                             <ExternalLink className="w-4 h-4 opacity-80" />
                           </a>
+                          <div className="text-[11px] text-sky-300/70 mt-1.5 flex items-center justify-center gap-1">
+                            <span>🚀 يفتح تطبيق تلغرام مباشرة (أو صفحة الويب كبديل تلقائي)</span>
+                          </div>
                         </div>
                       </div>
                     );

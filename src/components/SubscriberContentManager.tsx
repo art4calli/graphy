@@ -36,7 +36,9 @@ import {
   getLocalSubscriberTopics,
   saveLocalSubscriberTopics,
   syncSubscriberTopicTranslationsToSheet,
-  getSubscriberTelegramLink
+  getSubscriberTelegramLink,
+  openTelegramSmartLink,
+  parseTelegramUrls
 } from "../utils/googleBackendBridge";
 import { formatImageUrl } from "../utils/imageUtils";
 import { translateBatchWithAI } from "../utils/translatorService";
@@ -81,6 +83,7 @@ function DynamicTextWithTelegramButton({
   }
 
   const parts = text.split(TELEGRAM_SHORTCODE_REGEX);
+  const parsedUrls = parseTelegramUrls(studentTelegramLink, "202686124");
   const btnLabel =
     currentLang === "en"
       ? "📲 Activate Account on Telegram"
@@ -95,10 +98,10 @@ function DynamicTextWithTelegramButton({
           return (
             <span key={index} className="inline-block mx-1.5 my-2 align-middle">
               <a
-                href={studentTelegramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md border border-sky-400/40 transition-all cursor-pointer no-underline"
+                href={parsedUrls.appUrl}
+                onClick={(e) => openTelegramSmartLink(studentTelegramLink, "202686124", e)}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md border border-sky-400/40 transition-all cursor-pointer no-underline active:scale-95"
+                title="فتح تطبيق تلغرام مباشرة"
               >
                 <Send className="w-3.5 h-3.5 text-sky-200 shrink-0" />
                 <span>{btnLabel}</span>
@@ -1401,13 +1404,14 @@ export default function SubscriberContentManager({
                         const previewTarget = isTg ? getSubscriberTelegramLink("202686124") : c.linkUrl;
 
                         if (isTelegramDest) {
+                          const parsedUrls = parseTelegramUrls(previewTarget, "202686124");
                           return (
                             <div className="pt-4 border-t border-slate-800">
                               <a
-                                href={previewTarget}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="w-full bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                href={parsedUrls.appUrl}
+                                onClick={(e) => openTelegramSmartLink(previewTarget, "202686124", e)}
+                                className="w-full bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                                title="فتح تطبيق تلغرام مباشرة"
                               >
                                 <Send className="w-4 h-4 text-sky-200" />
                                 <span>

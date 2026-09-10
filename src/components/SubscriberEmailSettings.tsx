@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { translateBatchWithAI } from "../utils/translatorService";
 import { SubscriberEmailConfig, EmailFieldMapping, EmailAttachmentLink } from "../types";
-import { executeAppsScriptPost, DEFAULT_SCRIPT_URL, DEFAULT_SPREADSHEET_ID } from "../utils/googleBackendBridge";
+import { executeAppsScriptPost, DEFAULT_SCRIPT_URL, DEFAULT_SPREADSHEET_ID, openTelegramSmartLink, parseTelegramUrls } from "../utils/googleBackendBridge";
 
 export function toDirectImageUrl(url: string): string {
   if (!url) return "";
@@ -1022,10 +1022,10 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
               <div className="p-3 bg-sky-950/30 border border-sky-800/40 rounded-xl text-[11px] text-sky-200 leading-relaxed space-y-1">
                 <div className="font-semibold text-sky-300 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 shrink-0" />
-                  <span>توليد تلقائي داخل النظام بدون استهلاك درايف أو الشيت:</span>
+                  <span>توليد تلقائي وتقنية الربط الذكي المباشر (Smart Deep Link):</span>
                 </div>
                 <p>
-                  يمكنك تغيير معرف البوت بكل سهولة إذا قمت بتحديث البوت. يقوم النظام آلياً باستبدال الرمز <code className="bg-sky-900/60 px-1.5 py-0.5 rounded text-amber-300 font-mono">XXXXXX</code> برقم قيد المشترك الفعلي (مثال: <code className="text-emerald-300 font-mono">student_202686124</code>) لإنتاج رمز QR خاص بكل طالب وزر تفاعلي مباشر يرسل أمر البدء للبوت فوراً، دون الحاجة لحفظ صور في Google Drive أو روابط في الشيت.
+                  يمكنك كتابة رابط الويب (مثال: <code className="text-emerald-300 font-mono">https://t.me/nuon2026_bot?start=student_XXXXXX</code>) أو بروتوكول التطبيق. يقوم النظام آلياً باستبدال الرمز <code className="bg-sky-900/60 px-1.5 py-0.5 rounded text-amber-300 font-mono">XXXXXX</code> برقم قيد المشترك الفعلي، وتطبيق <strong>الربط الذكي (Smart Deep Link)</strong> الذي يفتح تطبيق تلغرام المثبت مباشرة على هواتف المشتركين بدون صفحة ويب وسيطة، مع التوجيه التلقائي لصفحة الويب إذا لم يكن التطبيق مثبتاً.
                 </p>
               </div>
             </div>
@@ -1047,17 +1047,15 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
                 className="w-24 h-24 mx-auto object-contain"
               />
             </div>
-            <a
-              href={(config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX")
-                .replace(/XXXXXX/g, "202686124")
-                .replace(/{id}/g, "202686124")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-lg shadow w-full transition-all"
+            <button
+              type="button"
+              onClick={(e) => openTelegramSmartLink(config.telegramBotLink, "202686124", e)}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow w-full transition-all cursor-pointer active:scale-95"
+              title="تجربة فتح تطبيق تلغرام مباشرة عبر الربط الذكي"
             >
-              <Send className="w-3 h-3" />
-              <span>تجربة فتح الرابط في تلغرام ↗</span>
-            </a>
+              <Send className="w-3.5 h-3.5" />
+              <span>تجربة فتح التطبيق المباشر ↗</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1580,19 +1578,17 @@ export default function SubscriberEmailSettings({ currentDriveFolderId, currentS
                     />
                   </div>
                   <div>
-                    <a
-                      href={(config.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX")
-                        .replace(/XXXXXX/g, "202686124")
-                        .replace(/{id}/g, "202686124")}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                    <button
+                      type="button"
+                      onClick={(e) => openTelegramSmartLink(config.telegramBotLink, "202686124", e)}
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95"
+                      title="تجربة فتح تطبيق تلغرام مباشرة عبر الربط الذكي"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>
                         {previewMsg.telegramButtonText || (previewLang === "en" ? "📲 Activate Account on Telegram" : (previewLang === "th" ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที" : "📲 تفعيل الحساب في تلغرام مباشرة"))}
                       </span>
-                    </a>
+                    </button>
                   </div>
                 </div>
               )}
