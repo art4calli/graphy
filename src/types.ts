@@ -180,6 +180,8 @@ export interface SubscriberState {
   isLoggedIn: boolean;
   subscriberName?: string;
   topicId?: string;
+  registrationId?: string;
+  username?: string;
   content?: SubscriberTopicContent;
   links: {
     text: string;

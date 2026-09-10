@@ -1691,17 +1691,25 @@ export default function RegistrationModal({
                     const botTemplate = activeEmailConfig?.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX";
                     const studentRegId = successInfo.id || "202686124";
                     const studentTelegramLink = botTemplate.replace(/XXXXXX/g, studentRegId).replace(/{id}/g, studentRegId);
-                    const telegramQrUrl = `https://quickchart.io/qr?text=${encodeURIComponent(studentTelegramLink)}&size=200&margin=1`;
+
+                    const defaultDescAr = "اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:";
+                    const defaultDescEn = "Tap the direct button below to link your account and receive real-time course updates via Telegram:";
+                    const defaultDescTh = "คลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:";
 
                     const currentLangMsgs = activeEmailConfig?.messages?.[formLang] || activeEmailConfig?.messages?.["ar"] || {};
                     const telegramTitle = currentLangMsgs.telegramSectionTitle || (formLang === "en" ? "Connect & Activate Telegram Bot 📲" : (formLang === "th" ? "เชื่อมต่อและเปิดใช้งานบอท Telegram 📲" : "ربط وتفعيل حسابك في بوت تلغرام 📲"));
-                    const telegramDesc = currentLangMsgs.telegramSectionDesc || (formLang === "en" ? "Scan the QR code below with your mobile camera or tap the direct button to link your account and receive real-time course updates via Telegram:" : (formLang === "th" ? "สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือคลิกปุ่มด้านล่างเพื่อเปิดใช้งานบัญชีและรับการแจ้งเตือนบทเรียนผ่าน Telegram ทันที:" : "امسح رمز QR التالي بكاميرا هاتفك أو اضغط على الزر أدناه لتفعيل حسابك ومتابعة دوراتك واستلام الإشعارات المباشرة عبر تلغرام فوراً:"));
+                    let telegramDesc = currentLangMsgs.telegramSectionDesc || (formLang === "en" ? defaultDescEn : (formLang === "th" ? defaultDescTh : defaultDescAr));
+                    telegramDesc = telegramDesc
+                      .replace(/امسح رمز QR التالي بكاميرا هاتفك أو /g, "")
+                      .replace(/Scan the QR code below with your mobile camera or /gi, "")
+                      .replace(/สแกนรหัส QR ด้านล่างด้วยกล้องโทรศัพท์ของคุณ หรือ/g, "");
+
                     const telegramBtnText = currentLangMsgs.telegramButtonText || (formLang === "en" ? "📲 Activate Account on Telegram" : (formLang === "th" ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที" : "📲 تفعيل الحساب في تلغرام مباشرة"));
 
                     return (
                       <div className="bg-gradient-to-br from-sky-950/80 via-slate-950 to-slate-900 border border-sky-500/40 rounded-2xl p-4 sm:p-5 text-center space-y-3.5 max-w-md mx-auto shadow-xl">
                         <div className="flex items-center justify-center gap-2 text-sky-400 font-bold text-sm sm:text-base">
-                          <Send className="w-4 h-4 text-sky-400" />
+                          <Send className="w-4.5 h-4.5 text-sky-400" />
                           <span>{telegramTitle}</span>
                         </div>
 
@@ -1709,26 +1717,17 @@ export default function RegistrationModal({
                           {telegramDesc}
                         </p>
 
-                        {/* Telegram Activation QR Code */}
-                        <div className="inline-block p-2.5 bg-white rounded-2xl shadow-lg border border-sky-400/40">
-                          <img
-                            src={telegramQrUrl}
-                            alt="Telegram Activation QR"
-                            className="w-32 h-32 sm:w-36 sm:h-36 mx-auto object-contain"
-                          />
-                        </div>
-
-                        {/* Interactive Direct Button */}
-                        <div>
+                        {/* Interactive Direct Telegram Activation Button */}
+                        <div className="pt-1">
                           <a
                             href={studentTelegramLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-sky-600 to-sky-500 hover:from-sky-500 hover:to-sky-400 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-sky-600/30 transition-all cursor-pointer"
+                            className="w-full inline-flex items-center justify-center gap-2.5 px-5 py-3 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-sky-600/30 hover:shadow-sky-500/40 transition-all cursor-pointer border border-sky-400/30"
                           >
-                            <Send className="w-4 h-4" />
+                            <Send className="w-4.5 h-4.5 text-sky-200" />
                             <span>{telegramBtnText}</span>
-                            <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                            <ExternalLink className="w-4 h-4 opacity-80" />
                           </a>
                         </div>
                       </div>

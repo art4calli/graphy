@@ -18,11 +18,12 @@ import {
   Globe,
   AlertTriangle,
   RefreshCw,
-  Loader2
+  Loader2,
+  Send
 } from "lucide-react";
 import { SubscriberState, SubscriberCard, SubscriberTopicContent, SocialLinks } from "../types";
 import { formatImageUrl } from "../utils/imageUtils";
-import { checkSubscriberAccountStatus, fetchSubscriberTopicContent } from "../utils/googleBackendBridge";
+import { checkSubscriberAccountStatus, fetchSubscriberTopicContent, getSubscriberTelegramLink } from "../utils/googleBackendBridge";
 import { useLanguage } from "../context/LanguageContext";
 import { translateBatchWithAI } from "../utils/translatorService";
 
@@ -172,6 +173,78 @@ function CardMediaCarousel({ media }: { media: { url: string; type?: "image" | "
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// Telegram shortcode detector and parser
+const TELEGRAM_SHORTCODE_REGEX = /(\{\{(?:telegram(?:_[a-z]+)?|تفعيل_تلغرام|زر_تلغرام|انضمام_تلغرام|telegram_button)\}\}|\[(?:telegram(?:_[a-z]+)?|تفعيل_تلغرام|زر_تلغرام|انضمام_تلغرام|TELEGRAM_BUTTON)\])/gi;
+
+function isTelegramShortcode(url?: string): boolean {
+  if (!url) return false;
+  const clean = url.trim().toLowerCase();
+  return (
+    clean === "{{telegram}}" ||
+    clean === "{{telegram_link}}" ||
+    clean === "{{telegram_btn}}" ||
+    clean === "{{telegram_button}}" ||
+    clean === "{{telegram_activate}}" ||
+    clean === "[telegram]" ||
+    clean === "[telegram_join]" ||
+    clean === "[telegram_button]" ||
+    clean === "{{تفعيل_تلغرام}}" ||
+    clean === "[تفعيل_تلغرام]" ||
+    clean === "{{زر_تلغرام}}" ||
+    clean === "[زر_تلغرام]" ||
+    clean === "{{انضمام_تلغرام}}" ||
+    clean === "[انضمام_تلغرام]" ||
+    clean === "telegram"
+  );
+}
+
+function DynamicTextWithTelegramButton({
+  text,
+  studentTelegramLink,
+  currentLang
+}: {
+  text: string;
+  studentTelegramLink: string;
+  currentLang: string;
+}) {
+  if (!text) return null;
+  if (!text.match(TELEGRAM_SHORTCODE_REGEX)) {
+    return <span className="whitespace-pre-line">{text}</span>;
+  }
+
+  const parts = text.split(TELEGRAM_SHORTCODE_REGEX);
+  const btnLabel =
+    currentLang === "en"
+      ? "📲 Activate Account on Telegram"
+      : currentLang === "th"
+      ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
+      : "📲 تفعيل الحساب في تلغرام مباشرة";
+
+  return (
+    <span className="whitespace-pre-line">
+      {parts.map((part, index) => {
+        if (part && part.match(TELEGRAM_SHORTCODE_REGEX)) {
+          return (
+            <span key={index} className="inline-block mx-1.5 my-2 align-middle">
+              <a
+                href={studentTelegramLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2.5 px-4 sm:px-5 py-2.5 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-sky-600/30 hover:shadow-sky-500/40 border border-sky-400/40 transition-all cursor-pointer no-underline hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Send className="w-4 h-4 text-sky-200 shrink-0" />
+                <span>{btnLabel}</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80 shrink-0" />
+              </a>
+            </span>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </span>
   );
 }
 
@@ -349,6 +422,36 @@ export default function SubscriberFullPage({
   const activeContent = topicContent || subscriber.content;
   const hasTopicCards = activeContent && activeContent.cards && activeContent.cards.length > 0;
 
+  // Extract subscriber registration ID reliably for direct Telegram activation link
+  const getSubscriberRegId = (): string => {
+    if (subscriber.registrationId && subscriber.registrationId.trim()) {
+      return subscriber.registrationId.trim();
+    }
+    try {
+      const raw = sessionStorage.getItem("subscriberLogin");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p.registrationId) return String(p.registrationId).trim();
+        if (p.password) return String(p.password).trim();
+        if (p.username && /^\d+$/.test(p.username)) return String(p.username).trim();
+      }
+    } catch (e) {}
+    try {
+      const saved = localStorage.getItem("thnoon_saved_subscriber");
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (p.data?.registrationId) return String(p.data.registrationId).trim();
+        if (p.data?.password) return String(p.data.password).trim();
+        if (p.username && /^\d+$/.test(p.username)) return String(p.username).trim();
+      }
+    } catch (e) {}
+    if (subscriber.topicId) return String(subscriber.topicId).trim();
+    return "202686124";
+  };
+
+  const studentRegId = getSubscriberRegId();
+  const studentTelegramLink = getSubscriberTelegramLink(studentRegId);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950" dir={dir}>
       
@@ -524,9 +627,13 @@ export default function SubscriberFullPage({
 
                 {/* Column C: Topic Description & Header */}
                 {activeContent?.description && (
-                  <p className="text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed whitespace-pre-line">
-                    {getLocalizedText(activeContent?.description, activeContent?.descriptionEn, activeContent?.descriptionTh)}
-                  </p>
+                  <div className="text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed">
+                    <DynamicTextWithTelegramButton
+                      text={getLocalizedText(activeContent?.description, activeContent?.descriptionEn, activeContent?.descriptionTh)}
+                      studentTelegramLink={studentTelegramLink}
+                      currentLang={currentLang}
+                    />
+                  </div>
                 )}
               </div>
 
@@ -552,15 +659,23 @@ export default function SubscriberFullPage({
                     {/* Card Title */}
                     <div className="mb-3">
                       <h4 className="font-serif font-bold text-amber-400 text-xl leading-snug">
-                        {getLocalizedText(card.title, card.titleEn, card.titleTh)}
+                        <DynamicTextWithTelegramButton
+                          text={getLocalizedText(card.title, card.titleEn, card.titleTh)}
+                          studentTelegramLink={studentTelegramLink}
+                          currentLang={currentLang}
+                        />
                       </h4>
                     </div>
 
                     {/* Description */}
                     {card.description && (
-                      <p className="text-slate-300 text-sm leading-relaxed mb-4 whitespace-pre-line">
-                        {getLocalizedText(card.description, card.descriptionEn, card.descriptionTh)}
-                      </p>
+                      <div className="text-slate-300 text-sm leading-relaxed mb-4">
+                        <DynamicTextWithTelegramButton
+                          text={getLocalizedText(card.description, card.descriptionEn, card.descriptionTh)}
+                          studentTelegramLink={studentTelegramLink}
+                          currentLang={currentLang}
+                        />
+                      </div>
                     )}
 
                     {/* Media Slideshow / Video */}
@@ -570,27 +685,65 @@ export default function SubscriberFullPage({
                   </div>
 
                   {/* Action Link Button */}
-                  {card.linkUrl && (
-                    <div className="mt-6 pt-4 border-t border-slate-800">
-                      <a
-                        href={card.linkUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 text-sm font-bold py-3 px-5 rounded-2xl text-center shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <ExternalLink className="w-4.5 h-4.5" />
-                        <span>
-                          {card.buttonText
-                            ? t(card.buttonText, card.buttonText)
-                            : currentLang === "en"
-                            ? "Open Resource / Link"
-                            : currentLang === "th"
-                            ? "เปิดทรัพยากร / ลิงก์"
-                            : t("subscriber_open_link_btn", "فتح الرابط / المورد المرفق")}
-                        </span>
-                      </a>
-                    </div>
-                  )}
+                  {card.linkUrl && (() => {
+                    const isTg = isTelegramShortcode(card.linkUrl);
+                    let targetUrl = isTg ? studentTelegramLink : card.linkUrl;
+                    if (targetUrl) {
+                      targetUrl = targetUrl
+                        .replace(/XXXXXX/g, studentRegId)
+                        .replace(/\{id\}/g, studentRegId)
+                        .replace(/\{\{id\}\}/g, studentRegId)
+                        .replace(/\{\{registrationId\}\}/g, studentRegId);
+                    }
+                    const isTelegramDestination = isTg || (targetUrl && targetUrl.includes("t.me/"));
+
+                    if (isTelegramDestination) {
+                      return (
+                        <div className="mt-6 pt-4 border-t border-slate-800">
+                          <a
+                            href={targetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-sm font-bold py-3 px-5 rounded-2xl text-center shadow-lg shadow-sky-600/30 hover:shadow-sky-500/40 border border-sky-400/30 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
+                          >
+                            <Send className="w-4.5 h-4.5 text-sky-200" />
+                            <span>
+                              {card.buttonText
+                                ? t(card.buttonText, card.buttonText)
+                                : currentLang === "en"
+                                ? "📲 Activate Account on Telegram"
+                                : currentLang === "th"
+                                ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
+                                : "📲 تفعيل الحساب في تلغرام مباشرة"}
+                            </span>
+                            <ExternalLink className="w-4 h-4 opacity-80" />
+                          </a>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="mt-6 pt-4 border-t border-slate-800">
+                        <a
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 text-sm font-bold py-3 px-5 rounded-2xl text-center shadow-lg shadow-amber-500/10 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <ExternalLink className="w-4.5 h-4.5" />
+                          <span>
+                            {card.buttonText
+                              ? t(card.buttonText, card.buttonText)
+                              : currentLang === "en"
+                              ? "Open Resource / Link"
+                              : currentLang === "th"
+                              ? "เปิดทรัพยากร / ลิงก์"
+                              : t("subscriber_open_link_btn", "فتح الرابط / المورد المرفق")}
+                          </span>
+                        </a>
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

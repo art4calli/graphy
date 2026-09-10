@@ -1500,6 +1500,7 @@ export async function loginSubscriberBridge(
                   const rawTopicId = sheetColA || "1";
                   const topicId = normalizeTopicDigitStr(rawTopicId) || "1";
                   const subscriberName = sheetColB || sheetColZ || cleanUser;
+                  const regId = sheetColAA || cleanPass || cleanUser;
 
                   // Read SubscriberContent sheet
                   const topicContent = await fetchSubscriberTopicContent(topicId, targetSpreadsheetId);
@@ -1509,6 +1510,8 @@ export async function loginSubscriberBridge(
                     subscriberName,
                     topicId,
                     content: topicContent,
+                    registrationId: regId,
+                    username: sheetColZ || cleanUser,
                     linkButtonText1: getVal(2),
                     linkButtonComment1: getVal(3),
                     url1: getVal(4),
@@ -1561,6 +1564,8 @@ export async function loginSubscriberBridge(
                     subscriberName: regName || cleanUser,
                     topicId,
                     content: topicContent,
+                    registrationId: regId || cleanPass || cleanUser,
+                    username: cleanUser,
                     exitButtonText: "تسجيل الخروج"
                   };
                 }
@@ -2442,6 +2447,27 @@ export async function deleteSubscriberTopicBridge(
     success: true,
     message: result.data?.message || "تم حذف صفحة المحتوى بنجاح من النظام"
   };
+}
+
+/**
+ * Resolves the dynamic Telegram activation link for a given subscriber registration ID.
+ * Replaces 'student_XXXXXX' or '{id}' with the actual registration ID.
+ */
+export function getSubscriberTelegramLink(registrationId?: string): string {
+  let activeEmailConfig: any = DEFAULT_SUBSCRIBER_EMAIL_CONFIG;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("thnoon_subscriber_email_config");
+      if (stored) activeEmailConfig = JSON.parse(stored);
+    } catch (e) {}
+  }
+  const botTemplate = activeEmailConfig?.telegramBotLink || "https://t.me/nuon2026_bot?start=student_XXXXXX";
+  const cleanId = (registrationId || "").toString().trim() || "XXXXXX";
+  return botTemplate
+    .replace(/XXXXXX/g, cleanId)
+    .replace(/\{id\}/g, cleanId)
+    .replace(/\{\{id\}\}/g, cleanId)
+    .replace(/\{\{registrationId\}\}/g, cleanId);
 }
 
 

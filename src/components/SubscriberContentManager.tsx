@@ -24,7 +24,9 @@ import {
   X,
   Maximize2,
   Check,
-  Languages
+  Languages,
+  Send,
+  Copy
 } from "lucide-react";
 import { SubscriberTopicContent, SubscriberCard } from "../types";
 import {
@@ -33,10 +35,83 @@ import {
   deleteSubscriberTopicBridge,
   getLocalSubscriberTopics,
   saveLocalSubscriberTopics,
-  syncSubscriberTopicTranslationsToSheet
+  syncSubscriberTopicTranslationsToSheet,
+  getSubscriberTelegramLink
 } from "../utils/googleBackendBridge";
 import { formatImageUrl } from "../utils/imageUtils";
 import { translateBatchWithAI } from "../utils/translatorService";
+
+// Telegram shortcode detector and helper for preview and content editing
+const TELEGRAM_SHORTCODE_REGEX = /(\{\{(?:telegram(?:_[a-z]+)?|تفعيل_تلغرام|زر_تلغرام|انضمام_تلغرام|telegram_button)\}\}|\[(?:telegram(?:_[a-z]+)?|تفعيل_تلغرام|زر_تلغرام|انضمام_تلغرام|TELEGRAM_BUTTON)\])/gi;
+
+function isTelegramShortcode(url?: string): boolean {
+  if (!url) return false;
+  const clean = url.trim().toLowerCase();
+  return (
+    clean === "{{telegram}}" ||
+    clean === "{{telegram_link}}" ||
+    clean === "{{telegram_btn}}" ||
+    clean === "{{telegram_button}}" ||
+    clean === "{{telegram_activate}}" ||
+    clean === "[telegram]" ||
+    clean === "[telegram_join]" ||
+    clean === "[telegram_button]" ||
+    clean === "{{تفعيل_تلغرام}}" ||
+    clean === "[تفعيل_تلغرام]" ||
+    clean === "{{زر_تلغرام}}" ||
+    clean === "[زر_تلغرام]" ||
+    clean === "{{انضمام_تلغرام}}" ||
+    clean === "[انضمام_تلغرام]" ||
+    clean === "telegram"
+  );
+}
+
+function DynamicTextWithTelegramButton({
+  text,
+  studentTelegramLink = "https://t.me/nuon2026_bot?start=student_202686124",
+  currentLang = "ar"
+}: {
+  text?: string;
+  studentTelegramLink?: string;
+  currentLang?: string;
+}) {
+  if (!text) return null;
+  if (!text.match(TELEGRAM_SHORTCODE_REGEX)) {
+    return <span className="whitespace-pre-line">{text}</span>;
+  }
+
+  const parts = text.split(TELEGRAM_SHORTCODE_REGEX);
+  const btnLabel =
+    currentLang === "en"
+      ? "📲 Activate Account on Telegram"
+      : currentLang === "th"
+      ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
+      : "📲 تفعيل الحساب في تلغرام مباشرة";
+
+  return (
+    <span className="whitespace-pre-line">
+      {parts.map((part, index) => {
+        if (part && part.match(TELEGRAM_SHORTCODE_REGEX)) {
+          return (
+            <span key={index} className="inline-block mx-1.5 my-2 align-middle">
+              <a
+                href={studentTelegramLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md border border-sky-400/40 transition-all cursor-pointer no-underline"
+              >
+                <Send className="w-3.5 h-3.5 text-sky-200 shrink-0" />
+                <span>{btnLabel}</span>
+                <ExternalLink className="w-3 h-3 opacity-80 shrink-0" />
+              </a>
+            </span>
+          );
+        }
+        return <span key={index}>{part}</span>;
+      })}
+    </span>
+  );
+}
 
 interface SubscriberContentManagerProps {
   currentScriptUrl?: string;
@@ -554,6 +629,43 @@ export default function SubscriberContentManager({
           </div>
         </div>
 
+        {/* Telegram Shortcode Tip & Quick Helper Banner */}
+        <div className="bg-gradient-to-r from-sky-950/70 via-slate-900 to-slate-950 border border-sky-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-sky-500/15 rounded-xl text-sky-400 mt-0.5 shrink-0 border border-sky-400/30">
+              <Send className="w-4 h-4" />
+            </div>
+            <div className="space-y-1">
+              <div className="font-bold text-sky-300 flex flex-wrap items-center gap-2">
+                <span>زر تفعيل تلغرام المباشر برقم تسجيل المشترك</span>
+                <span className="bg-sky-500/20 text-sky-300 text-[11px] px-2 py-0.5 rounded-full border border-sky-400/30 font-mono font-bold">
+                  {"{{telegram}}"}
+                </span>
+                <span className="bg-sky-500/20 text-sky-300 text-[11px] px-2 py-0.5 rounded-full border border-sky-400/30 font-mono font-bold">
+                  {"[تفعيل_تلغرام]"}
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed">
+                اكتب الرمز <code className="bg-sky-900/80 text-sky-200 px-1.5 py-0.5 rounded font-mono font-bold">{"{{telegram}}"}</code> في أي مكان (في وصف الصفحة، أو داخل شرح أي بطاقة، أو في خانة الرابط)، وسيتحول تلقائياً في صفحة كل مشترك إلى <strong>زر انتقال وتفعيل فوري في تلغرام برقم تسجيله المباشر</strong> (مثل: <code>nuon2026_bot?start=student_XXXXXX</code>).
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText("{{telegram}}");
+                setFeedback({ type: "success", message: "تم نسخ الرمز {{telegram}} بنجاح إلى الحافظة!" });
+                setTimeout(() => setFeedback(null), 3000);
+              }}
+              className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-md active:scale-95"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>نسخ الرمز</span>
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Column B: Title */}
           <div className="space-y-2">
@@ -633,7 +745,25 @@ export default function SubscriberContentManager({
           <div className="space-y-2 md:col-span-2">
             <label className="block text-xs font-bold text-slate-300 flex items-center justify-between">
               <span>العامود C: الوصف الترحيبي أو مقدمة الصفحة</span>
-              <span className="text-amber-400/80 text-[11px] font-mono">Column C</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateCurrentTopic((prev) => ({
+                      ...prev,
+                      description: prev.description ? `${prev.description}\n{{telegram}}` : "{{telegram}}"
+                    }));
+                    setFeedback({ type: "success", message: "تم إدراج رمز زر تفعيل تلغرام {{telegram}} في الوصف بنجاح!" });
+                    setTimeout(() => setFeedback(null), 3000);
+                  }}
+                  className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                  title="إدراج رمز زر تفعيل تلغرام"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>+ زر تلغرام</span>
+                </button>
+                <span className="text-amber-400/80 text-[11px] font-mono">Column C</span>
+              </div>
             </label>
             {activeLangTab === "ar" && (
               <textarea
@@ -876,7 +1006,30 @@ export default function SubscriberContentManager({
                   <div className="space-y-1.5 md:col-span-2">
                     <label className="block text-xs font-bold text-slate-300 flex items-center justify-between">
                       <span>الوصف والتفاصيل (العمود الثاني في المجموعة)</span>
-                      <span className="text-amber-400/80 text-[11px] font-mono">{getColLetter(startColIdx + 1)}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateCurrentTopic((prev) => {
+                              const nextCards = [...(prev.cards || [])];
+                              const cur = nextCards[idx]?.description || "";
+                              nextCards[idx] = {
+                                ...nextCards[idx],
+                                description: cur ? `${cur}\n{{telegram}}` : "{{telegram}}"
+                              };
+                              return { ...prev, cards: nextCards };
+                            });
+                            setFeedback({ type: "success", message: "تم إدراج رمز زر تلغرام {{telegram}} في شرح البطاقة بنجاح!" });
+                            setTimeout(() => setFeedback(null), 3000);
+                          }}
+                          className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                          title="إدراج رمز زر تفعيل تلغرام"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>+ زر تلغرام</span>
+                        </button>
+                        <span className="text-amber-400/80 text-[11px] font-mono">{getColLetter(startColIdx + 1)}</span>
+                      </div>
                     </label>
                     {activeLangTab === "ar" && (
                       <textarea
@@ -984,7 +1137,7 @@ export default function SubscriberContentManager({
                     </label>
                     <div className="flex items-center gap-2">
                       <input
-                        type="url"
+                        type="text"
                         dir="ltr"
                         value={card.linkUrl || ""}
                         onChange={(e) => {
@@ -995,16 +1148,37 @@ export default function SubscriberContentManager({
                             return { ...prev, cards: nextCards };
                           });
                         }}
-                        placeholder="https://t.me/... أو رابط ملف PDF للتنزيل"
+                        placeholder="https://t.me/... أو {{telegram}} أو رابط ملف PDF للتنزيل"
                         className="w-full bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition-all"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateCurrentTopic((prev) => {
+                            const nextCards = [...(prev.cards || [])];
+                            nextCards[idx] = {
+                              ...nextCards[idx],
+                              linkUrl: "{{telegram}}",
+                              buttonText: nextCards[idx].buttonText || "📲 تفعيل الحساب في تلغرام مباشرة"
+                            };
+                            return { ...prev, cards: nextCards };
+                          });
+                          setFeedback({ type: "success", message: "تم تعيين زر تفعيل تلغرام المباشر {{telegram}} لهذه البطاقة بنجاح!" });
+                          setTimeout(() => setFeedback(null), 3000);
+                        }}
+                        title="تعيين رابط زر تفعيل تلغرام المباشر برقم تسجيل المشترك"
+                        className="px-2.5 py-2 bg-sky-950/80 hover:bg-sky-900 border border-sky-500/40 text-sky-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
+                      >
+                        <Send className="w-3.5 h-3.5 text-sky-400" />
+                        <span className="hidden sm:inline">زر تلغرام</span>
+                      </button>
                       {card.linkUrl && (
                         <a
-                          href={card.linkUrl}
+                          href={isTelegramShortcode(card.linkUrl) ? getSubscriberTelegramLink("202686124") : card.linkUrl}
                           target="_blank"
                           rel="noreferrer"
                           title="اختبار الرابط"
-                          className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl border border-slate-700 shrink-0"
+                          className="p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl border border-slate-700 shrink-0 cursor-pointer"
                         >
                           <ExternalLink className="w-4 h-4" />
                         </a>
@@ -1142,13 +1316,18 @@ export default function SubscriberContentManager({
                       ? currentTopic.titleTh || currentTopic.title
                       : currentTopic.title || "عنوان الصفحة الخاصة"}
                   </h1>
-                  <p className="text-slate-300 text-sm sm:text-base mt-2 leading-relaxed whitespace-pre-line">
-                    {previewLang === "en"
-                      ? currentTopic.descriptionEn || currentTopic.description
-                      : previewLang === "th"
-                      ? currentTopic.descriptionTh || currentTopic.description
-                      : currentTopic.description || "الوصف الترحيبي..."}
-                  </p>
+                  <div className="text-slate-300 text-sm sm:text-base mt-2 leading-relaxed">
+                    <DynamicTextWithTelegramButton
+                      text={
+                        previewLang === "en"
+                          ? currentTopic.descriptionEn || currentTopic.description
+                          : previewLang === "th"
+                          ? currentTopic.descriptionTh || currentTopic.description
+                          : currentTopic.description || "الوصف الترحيبي..."
+                      }
+                      currentLang={previewLang}
+                    />
+                  </div>
                 </div>
 
                 {(currentTopic.badge || (previewLang === "en" && currentTopic.badgeEn) || (previewLang === "th" && currentTopic.badgeTh)) && (
@@ -1193,12 +1372,12 @@ export default function SubscriberContentManager({
                     >
                       <div>
                         <h4 className="font-serif font-bold text-amber-400 text-lg sm:text-xl mb-2">
-                          {cardTitle}
+                          <DynamicTextWithTelegramButton text={cardTitle} currentLang={previewLang} />
                         </h4>
                         {cardDesc && (
-                          <p className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4 whitespace-pre-line">
-                            {cardDesc}
-                          </p>
+                          <div className="text-slate-300 text-xs sm:text-sm leading-relaxed mb-4">
+                            <DynamicTextWithTelegramButton text={cardDesc} currentLang={previewLang} />
+                          </div>
                         )}
 
                         {cardMediaUrl && (
@@ -1216,25 +1395,56 @@ export default function SubscriberContentManager({
                         )}
                       </div>
 
-                      {c.linkUrl && (
-                        <div className="pt-4 border-t border-slate-800">
-                          <a
-                            href={c.linkUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            <span>
-                              {previewLang === "en"
-                                ? "Open Resource / Link"
-                                : previewLang === "th"
-                                ? "เปิดทรัพยากร / ลิงก์"
-                                : "فتح الرابط / المورد المرفق"}
-                            </span>
-                          </a>
-                        </div>
-                      )}
+                      {c.linkUrl && (() => {
+                        const isTg = isTelegramShortcode(c.linkUrl);
+                        const isTelegramDest = isTg || c.linkUrl.includes("t.me/");
+                        const previewTarget = isTg ? getSubscriberTelegramLink("202686124") : c.linkUrl;
+
+                        if (isTelegramDest) {
+                          return (
+                            <div className="pt-4 border-t border-slate-800">
+                              <a
+                                href={previewTarget}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="w-full bg-gradient-to-r from-sky-600 via-sky-500 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                              >
+                                <Send className="w-4 h-4 text-sky-200" />
+                                <span>
+                                  {c.buttonText ||
+                                    (previewLang === "en"
+                                      ? "📲 Activate Account on Telegram"
+                                      : previewLang === "th"
+                                      ? "📲 เปิดใช้งานบัญชีใน Telegram ทันที"
+                                      : "📲 تفعيل الحساب في تلغرام مباشرة")}
+                                </span>
+                                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                              </a>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="pt-4 border-t border-slate-800">
+                            <a
+                              href={c.linkUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 text-xs sm:text-sm font-bold py-2.5 px-4 rounded-xl text-center shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              <span>
+                                {c.buttonText ||
+                                  (previewLang === "en"
+                                    ? "Open Resource / Link"
+                                    : previewLang === "th"
+                                    ? "เปิดทรัพยากร / ลิงก์"
+                                    : "فتح الرابط / المورد المرفق")}
+                              </span>
+                            </a>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
