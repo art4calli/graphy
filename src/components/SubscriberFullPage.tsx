@@ -24,6 +24,7 @@ import { SubscriberState, SubscriberCard, SubscriberTopicContent, SocialLinks } 
 import { formatImageUrl } from "../utils/imageUtils";
 import { checkSubscriberAccountStatus, fetchSubscriberTopicContent } from "../utils/googleBackendBridge";
 import { useLanguage } from "../context/LanguageContext";
+import { translateBatchWithAI } from "../utils/translatorService";
 
 interface SubscriberFullPageProps {
   subscriber: SubscriberState;
@@ -185,9 +186,21 @@ export default function SubscriberFullPage({
 
   // Multi-language text resolver for subscriber content
   const getLocalizedText = (arText?: string, enText?: string, thText?: string) => {
-    if (currentLang === "en" && enText) return enText;
-    if (currentLang === "th" && thText) return thText;
-    if (!arText) return "";
+    if (currentLang === "en") {
+      if (enText && enText.trim()) return enText;
+      if (arText) {
+        const fromDict = t(arText, "");
+        if (fromDict && fromDict !== arText) return fromDict;
+      }
+    }
+    if (currentLang === "th") {
+      if (thText && thText.trim()) return thText;
+      if (arText) {
+        const fromDict = t(arText, "");
+        if (fromDict && fromDict !== arText) return fromDict;
+      }
+    }
+    if (!arText) return enText || thText || "";
     return t(arText, arText);
   };
 
@@ -197,6 +210,78 @@ export default function SubscriberFullPage({
   );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [blockedAlert, setBlockedAlert] = useState<string | null>(null);
+
+  // Auto on-the-fly multi-language translation for any missing cards/content when user views in EN or TH
+  useEffect(() => {
+    if (currentLang === "ar" || !topicContent || !topicContent.cards || topicContent.cards.length === 0) {
+      return;
+    }
+
+    const titleField = currentLang === "en" ? "titleEn" : "titleTh";
+    const descField = currentLang === "en" ? "descriptionEn" : "descriptionTh";
+
+    const hasHeaderTitle = Boolean(topicContent[titleField]);
+    const untranslatedCards = topicContent.cards.filter((c) => !c[titleField]);
+
+    // If translations are missing for this language, translate on-the-fly in background immediately
+    if (!hasHeaderTitle || untranslatedCards.length > 0) {
+      const itemsToTranslate: Array<{ id: string; ar: string }> = [];
+
+      if (topicContent.title && !topicContent[titleField]) {
+        itemsToTranslate.push({ id: "header_title", ar: topicContent.title });
+      }
+      if (topicContent.description && !topicContent[descField]) {
+        itemsToTranslate.push({ id: "header_desc", ar: topicContent.description });
+      }
+      if (topicContent.badge && !topicContent[currentLang === "en" ? "badgeEn" : "badgeTh"]) {
+        itemsToTranslate.push({ id: "header_badge", ar: topicContent.badge });
+      }
+
+      topicContent.cards.forEach((c, idx) => {
+        if (c.title && !c[titleField]) {
+          itemsToTranslate.push({ id: `card_${idx}_title`, ar: c.title });
+        }
+        if (c.description && !c[descField]) {
+          itemsToTranslate.push({ id: `card_${idx}_desc`, ar: c.description });
+        }
+      });
+
+      if (itemsToTranslate.length > 0) {
+        translateBatchWithAI(itemsToTranslate).then((res) => {
+          if (res && Object.keys(res).length > 0) {
+            setTopicContent((prev) => {
+              if (!prev) return prev;
+              const next: SubscriberTopicContent = { ...prev };
+              if (res["header_title"]) {
+                if (res["header_title"].en) next.titleEn = res["header_title"].en;
+                if (res["header_title"].th) next.titleTh = res["header_title"].th;
+              }
+              if (res["header_desc"]) {
+                if (res["header_desc"].en) next.descriptionEn = res["header_desc"].en;
+                if (res["header_desc"].th) next.descriptionTh = res["header_desc"].th;
+              }
+              if (res["header_badge"]) {
+                if (res["header_badge"].en) next.badgeEn = res["header_badge"].en;
+                if (res["header_badge"].th) next.badgeTh = res["header_badge"].th;
+              }
+              next.cards = (next.cards || []).map((cd, idx) => {
+                const trTitle = res[`card_${idx}_title`];
+                const trDesc = res[`card_${idx}_desc`];
+                return {
+                  ...cd,
+                  titleEn: trTitle?.en || cd.titleEn,
+                  titleTh: trTitle?.th || cd.titleTh,
+                  descriptionEn: trDesc?.en || cd.descriptionEn,
+                  descriptionTh: trDesc?.th || cd.descriptionTh
+                };
+              });
+              return next;
+            });
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [currentLang, topicContent]);
 
   // Helper to load topic content directly from Google Sheets
   const reloadContent = useCallback(async (manual = false) => {

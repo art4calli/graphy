@@ -1040,10 +1040,64 @@ export function saveLocalSubscriberTopics(topics: SubscriberTopicContent[]): voi
   } catch (e) {}
 }
 
+let cachedSiteTransMap: Map<string, { en: string; th: string }> | null = null;
+let cachedSiteTransTime = 0;
+
+/**
+ * Universal SiteTranslations live dictionary reader.
+ * Fetches translations stored in the Google Sheets SiteTranslations tab
+ * so any device globally gets instant multi-language support.
+ */
+export async function getLiveSiteTranslationsMap(spreadsheetId?: string): Promise<Map<string, { en: string; th: string }>> {
+  const now = Date.now();
+  if (cachedSiteTransMap && now - cachedSiteTransTime < 45000) {
+    return cachedSiteTransMap;
+  }
+  const map = new Map<string, { en: string; th: string }>();
+  const targetSpreadsheetId = getActiveSpreadsheetId(spreadsheetId);
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=SiteTranslations&t=${now}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (res.ok) {
+      const text = await res.text();
+      const s = text.indexOf("{");
+      const e = text.lastIndexOf("}");
+      if (s !== -1 && e !== -1) {
+        const json = JSON.parse(text.substring(s, e + 1));
+        if (json?.table?.rows) {
+          json.table.rows.forEach((r: any) => {
+            const cr = r?.c || [];
+            const getV = (i: number) => {
+              if (!cr[i] || cr[i].v === null || cr[i].v === undefined) return "";
+              return (cr[i].f !== undefined ? cr[i].f : cr[i].v).toString().trim();
+            };
+            const id = getV(0);
+            const ar = getV(3);
+            const th = getV(4);
+            const en = getV(5);
+            if (id && (en || th)) {
+              map.set(id.toLowerCase(), { en, th });
+            }
+            if (ar && (en || th)) {
+              map.set(normalizeArabicText(ar), { en, th });
+            }
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch live SiteTranslations map:", err);
+  }
+  cachedSiteTransMap = map;
+  cachedSiteTransTime = now;
+  return map;
+}
+
 /**
  * Universal, high-resilience SubscriberContent reader.
  * Reads cards, covers, videos, links, badges from Google Sheets SubscriberContent tab.
- * Prioritizes local system cache for lightning speed and seamless translations.
+ * Automatically synchronizes and enriches with SiteTranslations so that
+ * mobile phones, tablets, and remote PCs receive full English and Thai translations.
  */
 export async function fetchSubscriberTopicContent(
   topicId: string,
@@ -1051,15 +1105,19 @@ export async function fetchSubscriberTopicContent(
 ): Promise<SubscriberTopicContent | null> {
   const cleanTargetTopic = normalizeTopicDigitStr(topicId) || "1";
 
-  // 1. فحص فوري وسريع من النظام الداخلي أولاً لضمان فتح الصفحة في 0 ثانية وبترجمة دقيقة
+  // 1. فحص فوري وسريع من النظام الداخلي أولاً
   const localList = getLocalSubscriberTopics();
   const matchedLocal = localList.find((t) => isTopicMatching(cleanTargetTopic, t.topicId));
-  if (matchedLocal && matchedLocal.cards && matchedLocal.cards.length > 0) {
+  // If local record has cards AND already has translations, return immediately
+  if (matchedLocal && matchedLocal.cards && matchedLocal.cards.length > 0 && (matchedLocal.titleEn || matchedLocal.titleTh)) {
     return matchedLocal;
   }
 
   const targetSpreadsheetId = getActiveSpreadsheetId(explicitSpreadsheetId);
   const sheetNames = ["SubscriberContent", "Subscriber Content", "subscribercontent", "محتوى المشتركين", "المحتوى", "محتوى المشترك"];
+
+  // Fetch live translations map concurrently
+  const transMapPromise = getLiveSiteTranslationsMap(targetSpreadsheetId).catch(() => new Map<string, { en: string; th: string }>());
 
   for (const sheetName of sheetNames) {
     try {
@@ -1143,14 +1201,62 @@ export async function fetchSubscriberTopicContent(
                 }
               }
 
-              return {
+              // Enrich with translations from SiteTranslations sheet or local cache
+              const transMap = await transMapPromise;
+              const normTitle = normalizeArabicText(title);
+              const normDesc = normalizeArabicText(description);
+              const normBadge = badge ? normalizeArabicText(badge) : "";
+
+              const titleTrans = transMap.get(normTitle) || transMap.get(`sub_topic_${cleanTargetTopic}_title`) || transMap.get(`sub_topic_${cleanTargetTopic}_t`);
+              const descTrans = transMap.get(normDesc) || transMap.get(`sub_topic_${cleanTargetTopic}_desc`) || transMap.get(`sub_topic_${cleanTargetTopic}_d`);
+              const badgeTrans = normBadge ? (transMap.get(normBadge) || transMap.get(`sub_topic_${cleanTargetTopic}_badge`)) : undefined;
+
+              const enrichedCards: SubscriberCard[] = cards.map((crd, crdIdx) => {
+                const normCrdTitle = normalizeArabicText(crd.title);
+                const normCrdDesc = normalizeArabicText(crd.description);
+                const cTitleTrans = transMap.get(normCrdTitle) || transMap.get(`sub_topic_${cleanTargetTopic}_card_${crdIdx}_title`) || transMap.get(`sub_topic_${cleanTargetTopic}_c${crdIdx}_t`);
+                const cDescTrans = transMap.get(normCrdDesc) || transMap.get(`sub_topic_${cleanTargetTopic}_card_${crdIdx}_desc`) || transMap.get(`sub_topic_${cleanTargetTopic}_c${crdIdx}_d`);
+
+                // Fall back to matchedLocal if already cached on this machine
+                const localCard = matchedLocal?.cards?.[crdIdx];
+
+                return {
+                  ...crd,
+                  titleEn: cTitleTrans?.en || localCard?.titleEn,
+                  titleTh: cTitleTrans?.th || localCard?.titleTh,
+                  descriptionEn: cDescTrans?.en || localCard?.descriptionEn,
+                  descriptionTh: cDescTrans?.th || localCard?.descriptionTh
+                };
+              });
+
+              const enrichedTopic: SubscriberTopicContent = {
                 topicId: cleanTargetTopic,
                 title,
+                titleEn: titleTrans?.en || matchedLocal?.titleEn,
+                titleTh: titleTrans?.th || matchedLocal?.titleTh,
                 description,
+                descriptionEn: descTrans?.en || matchedLocal?.descriptionEn,
+                descriptionTh: descTrans?.th || matchedLocal?.descriptionTh,
                 coverImage,
                 badge: (badge && badge !== "-") ? badge : undefined,
-                cards
+                badgeEn: badgeTrans?.en || matchedLocal?.badgeEn,
+                badgeTh: badgeTrans?.th || matchedLocal?.badgeTh,
+                cards: enrichedCards
               };
+
+              // Cache to localStorage on this device (mobile / tablet / computer)
+              try {
+                const freshLocal = getLocalSubscriberTopics();
+                const eIdx = freshLocal.findIndex((t) => isTopicMatching(cleanTargetTopic, t.topicId));
+                if (eIdx !== -1) {
+                  freshLocal[eIdx] = enrichedTopic;
+                } else {
+                  freshLocal.push(enrichedTopic);
+                }
+                saveLocalSubscriberTopics(freshLocal);
+              } catch (cacheErr) {}
+
+              return enrichedTopic;
             }
           }
         }
@@ -1159,6 +1265,9 @@ export async function fetchSubscriberTopicContent(
       console.warn(`Error reading sheet tab '${sheetName}':`, sheetErr);
     }
   }
+
+  // Final fallback to local cache
+  if (matchedLocal) return matchedLocal;
 
   return null;
 }
@@ -1966,8 +2075,13 @@ export async function fetchAllSubscriberTopicsBridge(
                 }
               }
 
-              // Merge with local translations if available
+              // Merge with live SiteTranslations sheet and local translations
               const cached = localMap.get(cleanTopicId);
+              const normTitle = normalizeArabicText(title);
+              const normDesc = normalizeArabicText(description);
+              const normBadge = badge ? normalizeArabicText(badge) : "";
+
+              // We'll populate translations from live SiteTranslations map
               const topicRecord: SubscriberTopicContent = {
                 topicId: cleanTopicId,
                 rowIndex: rIdx + 2,
@@ -1998,6 +2112,37 @@ export async function fetchAllSubscriberTopicsBridge(
             });
 
             if (fetchedTopics.length > 0) {
+              // Concurrently enrich all fetched topics with SiteTranslations
+              try {
+                const transMap = await getLiveSiteTranslationsMap(targetSpreadsheetId);
+                fetchedTopics.forEach((t) => {
+                  const nTitle = normalizeArabicText(t.title);
+                  const nDesc = normalizeArabicText(t.description);
+                  const nBadge = t.badge ? normalizeArabicText(t.badge) : "";
+                  const tTitle = transMap.get(nTitle) || transMap.get(`sub_topic_${t.topicId}_title`);
+                  const tDesc = transMap.get(nDesc) || transMap.get(`sub_topic_${t.topicId}_desc`);
+                  const tBadge = nBadge ? (transMap.get(nBadge) || transMap.get(`sub_topic_${t.topicId}_badge`)) : undefined;
+
+                  if (!t.titleEn && tTitle?.en) t.titleEn = tTitle.en;
+                  if (!t.titleTh && tTitle?.th) t.titleTh = tTitle.th;
+                  if (!t.descriptionEn && tDesc?.en) t.descriptionEn = tDesc.en;
+                  if (!t.descriptionTh && tDesc?.th) t.descriptionTh = tDesc.th;
+                  if (!t.badgeEn && tBadge?.en) t.badgeEn = tBadge.en;
+                  if (!t.badgeTh && tBadge?.th) t.badgeTh = tBadge.th;
+
+                  (t.cards || []).forEach((c, idx) => {
+                    const nCTitle = normalizeArabicText(c.title);
+                    const nCDesc = normalizeArabicText(c.description);
+                    const cTitleTrans = transMap.get(nCTitle) || transMap.get(`sub_topic_${t.topicId}_card_${idx}_title`);
+                    const cDescTrans = transMap.get(nCDesc) || transMap.get(`sub_topic_${t.topicId}_card_${idx}_desc`);
+                    if (!c.titleEn && cTitleTrans?.en) c.titleEn = cTitleTrans.en;
+                    if (!c.titleTh && cTitleTrans?.th) c.titleTh = cTitleTrans.th;
+                    if (!c.descriptionEn && cDescTrans?.en) c.descriptionEn = cDescTrans.en;
+                    if (!c.descriptionTh && cDescTrans?.th) c.descriptionTh = cDescTrans.th;
+                  });
+                });
+              } catch (e) {}
+
               saveLocalSubscriberTopics(fetchedTopics);
               return { success: true, topics: fetchedTopics };
             }
@@ -2098,6 +2243,103 @@ export async function fetchAllSubscriberTopicsBridge(
 }
 
 /**
+ * Automatically syncs subscriber topic translations to the SiteTranslations tab in Google Sheets.
+ * Merges with existing site translations so nothing is lost, and writes to Google Sheets.
+ * This guarantees that when a subscriber logs in on ANY mobile device, tablet, or PC,
+ * their page is rendered in English, Thai, or Arabic instantly.
+ */
+export async function syncSubscriberTopicTranslationsToSheet(
+  topic: SubscriberTopicContent,
+  explicitScriptUrl?: string
+): Promise<void> {
+  const targetScriptUrl = getActiveScriptUrl(explicitScriptUrl);
+  const cleanTopicId = normalizeTopicDigitStr(topic.topicId) || "1";
+
+  const newTransItems: any[] = [];
+  if (topic.title && (topic.titleEn || topic.titleTh)) {
+    newTransItems.push({
+      id: `sub_topic_${cleanTopicId}_title`,
+      category: "subscriber",
+      label: `عنوان موضوع المشترك ${cleanTopicId}`,
+      ar: topic.title,
+      en: topic.titleEn || "",
+      th: topic.titleTh || ""
+    });
+  }
+  if (topic.description && (topic.descriptionEn || topic.descriptionTh)) {
+    newTransItems.push({
+      id: `sub_topic_${cleanTopicId}_desc`,
+      category: "subscriber",
+      label: `وصف موضوع المشترك ${cleanTopicId}`,
+      ar: topic.description,
+      en: topic.descriptionEn || "",
+      th: topic.descriptionTh || ""
+    });
+  }
+  if (topic.badge && (topic.badgeEn || topic.badgeTh)) {
+    newTransItems.push({
+      id: `sub_topic_${cleanTopicId}_badge`,
+      category: "subscriber",
+      label: `شارة موضوع المشترك ${cleanTopicId}`,
+      ar: topic.badge,
+      en: topic.badgeEn || "",
+      th: topic.badgeTh || ""
+    });
+  }
+
+  (topic.cards || []).forEach((c, idx) => {
+    if (c.title && (c.titleEn || c.titleTh)) {
+      newTransItems.push({
+        id: `sub_topic_${cleanTopicId}_card_${idx}_title`,
+        category: "subscriber",
+        label: `عنوان بطاقة ${idx + 1} للموضوع ${cleanTopicId}`,
+        ar: c.title,
+        en: c.titleEn || "",
+        th: c.titleTh || ""
+      });
+    }
+    if (c.description && (c.descriptionEn || c.descriptionTh)) {
+      newTransItems.push({
+        id: `sub_topic_${cleanTopicId}_card_${idx}_desc`,
+        category: "subscriber",
+        label: `وصف بطاقة ${idx + 1} للموضوع ${cleanTopicId}`,
+        ar: c.description,
+        en: c.descriptionEn || "",
+        th: c.descriptionTh || ""
+      });
+    }
+  });
+
+  if (newTransItems.length === 0) return;
+
+  // Clear memory cache so fresh translations are queried immediately
+  cachedSiteTransMap = null;
+
+  try {
+    const existingRes = await fetchSiteTranslationsBridge(targetScriptUrl);
+    const existingList = (existingRes && existingRes.success && Array.isArray(existingRes.translations))
+      ? existingRes.translations
+      : [];
+
+    const mergedMap = new Map<string, any>();
+    existingList.forEach((item: any) => {
+      if (item && item.id) {
+        mergedMap.set(item.id.toLowerCase(), item);
+      }
+    });
+
+    newTransItems.forEach((item: any) => {
+      mergedMap.set(item.id.toLowerCase(), item);
+    });
+
+    const finalTranslations = Array.from(mergedMap.values());
+    await saveSiteTranslationsBridge(finalTranslations, targetScriptUrl);
+  } catch (err) {
+    console.warn("Could not sync subscriber translations to SiteTranslations sheet:", err);
+  }
+}
+
+/**
  * Universal Subscriber Topic Saver Bridge
  * Saves the page into internal fast storage (instant UI update)
  * AND writes the Arabic text + cards into Google Sheets (SubscriberContent sheet) via Google Apps Script.
@@ -2124,6 +2366,9 @@ export async function saveSubscriberTopicBridge(
     currentList.push(updatedTopic);
   }
   saveLocalSubscriberTopics(currentList);
+
+  // Background: synchronize all topic translations to Google Sheets SiteTranslations tab
+  syncSubscriberTopicTranslationsToSheet(updatedTopic, targetScriptUrl).catch(() => {});
 
   // 2. PREPARE PAYLOAD FOR GOOGLE APPS SCRIPT (Arabic content + cards recorded permanently)
   const postPayload = {

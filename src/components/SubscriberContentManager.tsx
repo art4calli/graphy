@@ -32,7 +32,8 @@ import {
   saveSubscriberTopicBridge,
   deleteSubscriberTopicBridge,
   getLocalSubscriberTopics,
-  saveLocalSubscriberTopics
+  saveLocalSubscriberTopics,
+  syncSubscriberTopicTranslationsToSheet
 } from "../utils/googleBackendBridge";
 import { formatImageUrl } from "../utils/imageUtils";
 import { translateBatchWithAI } from "../utils/translatorService";
@@ -302,6 +303,7 @@ export default function SubscriberContentManager({
       const results = await translateBatchWithAI(itemsToTranslate, currentScriptUrl);
 
       if (results && Object.keys(results).length > 0) {
+        let autoSyncTopic: SubscriberTopicContent | null = null;
         updateCurrentTopic((prev) => {
           const updated: SubscriberTopicContent = { ...prev };
 
@@ -330,10 +332,16 @@ export default function SubscriberContentManager({
             };
           });
 
+          autoSyncTopic = updated;
           return updated;
         });
 
-        showNotification("تمت الترجمة الذكية بنجاح باللغتين الإنجليزية والتايلاندية!", "success");
+        if (autoSyncTopic) {
+          syncSubscriberTopicTranslationsToSheet(autoSyncTopic, currentScriptUrl).catch(() => {});
+          saveSubscriberTopicBridge(autoSyncTopic, currentScriptUrl).catch(() => {});
+        }
+
+        showNotification("تمت الترجمة الذكية بنجاح ومزامنتها لجميع الأجهزة بالإنجليزية والتايلاندية!", "success");
       } else {
         showNotification("تعذر إتمام الترجمة، يرجى التحقق من الاتصال والمحاولة ثانية", "error");
       }
