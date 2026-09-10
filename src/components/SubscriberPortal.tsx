@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   User,
@@ -25,6 +25,9 @@ interface SubscriberPortalProps {
   onLogin: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   onLogout: () => void;
   onOpenRegistration?: () => void;
+  initialUsername?: string;
+  initialPassword?: string;
+  autoFillNotice?: string;
 }
 
 export default function SubscriberPortal({
@@ -32,15 +35,31 @@ export default function SubscriberPortal({
   onClose,
   subscriber,
   onLogin,
-  onOpenRegistration
+  onOpenRegistration,
+  initialUsername,
+  initialPassword,
+  autoFillNotice
 }: SubscriberPortalProps) {
   const { t, dir, currentLang, setLanguage } = useLanguage();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(initialUsername || "");
+  const [password, setPassword] = useState(initialPassword || "");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Sync initial credentials when modal opens or credentials change
+  useEffect(() => {
+    if (isOpen) {
+      if (initialUsername !== undefined) {
+        setUsername(initialUsername);
+      }
+      if (initialPassword !== undefined) {
+        setPassword(initialPassword);
+      }
+      setError("");
+    }
+  }, [isOpen, initialUsername, initialPassword]);
 
   const handleCopyPortalLink = () => {
     try {
@@ -291,6 +310,14 @@ export default function SubscriberPortal({
                   <div className="flex-grow border-t border-slate-800"></div>
                 </div>
               </div>
+
+              {/* Auto-fill notification if redirected from RegistrationModal */}
+              {autoFillNotice && (
+                <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/15 to-amber-600/20 border border-amber-500/40 text-amber-300 text-xs py-2.5 px-3 rounded-2xl flex items-center gap-2 mb-3 shadow-md">
+                  <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                  <span className="font-sans font-medium leading-relaxed">{autoFillNotice}</span>
+                </div>
+              )}
 
               {/* Form elements */}
               <form onSubmit={handleSubmit} className="space-y-4">

@@ -26,7 +26,9 @@ import {
   Trash2,
   Folder,
   Languages,
-  Globe
+  Globe,
+  LogIn,
+  Copy
 } from "lucide-react";
 import { RegistrationQuestion, QuestionTranslation } from "../types";
 import { DEFAULT_FORM_TRANSLATIONS } from "../data/defaultFormTranslations";
@@ -76,6 +78,15 @@ export const FORM_UI_STRINGS = {
     successTitle: "تم استلام طلب التسجيل بنجاح!",
     successDesc: "تم حفظ بياناتك وإجاباتك بنجاح في النظام، وسيقوم المشرف بمراجعة الطلب والتواصل معك لتفعيل الحساب.",
     closeSuccessBtn: "إغلاق والعودة للموقع",
+    goToMyPortalBtn: "دخول لبوابتي الآن 🚀",
+    goToMyPortalSub: "تم تعبئة رقمك المرجعي تلقائياً لتسريع دخولك الفوري",
+    emailNoticeTitle: "تم إرسال نسخة من بيانات التسجيل إلى بريدك الإلكتروني",
+    emailNoticeDesc: "تأكد من مراجعة صندوق الوارد أو مجلد الرسائل غير المرغوب فيها (Spam) للاحتفاظ برقمك المرجعي وتفاصيل حسابك.",
+    mathChallengeTitle: "التحقق الأمني الذكي (Math Challenge)",
+    mathChallengeDesc: "تم رصد تسجيل سابق من هذا الجهاز مؤخراً. لتأكيد الإرسال ومنع التكرار والعبث، يرجى كتابة ناتج العملية البسيطة التالية:",
+    mathChallengePlaceholder: "اكتب الناتج هنا...",
+    mathChallengeError: "ناتج العملية الحسابية غير صحيح، يرجى إعادة المحاولة",
+    mathChallengeRequired: "يرجى حل سؤال التحقق الحسابي للمتابعة",
     cameraPreviewTitle: "معاينة الصورة الملتقطة",
     cameraLiveTitle: "تصوير مباشر بالكاميرا",
     cameraPreviewSub: "تأكد من وضوح الصورة قبل الاعتماد",
@@ -119,6 +130,15 @@ export const FORM_UI_STRINGS = {
     successTitle: "Registration Submitted Successfully!",
     successDesc: "Your registration information has been recorded. Our administrator will review your application shortly.",
     closeSuccessBtn: "Close & Return to Home",
+    goToMyPortalBtn: "Enter My Portal Now 🚀",
+    goToMyPortalSub: "Your Registration ID has been pre-filled for fast access",
+    emailNoticeTitle: "Confirmation Sent to Your Email",
+    emailNoticeDesc: "A copy of your registration details and ID has been sent to your email. Please check your inbox or spam folder.",
+    mathChallengeTitle: "Quick Security Check (Math Challenge)",
+    mathChallengeDesc: "A previous registration was detected on this device. Please solve this simple equation to confirm:",
+    mathChallengePlaceholder: "Enter answer...",
+    mathChallengeError: "Incorrect answer, please try again",
+    mathChallengeRequired: "Please answer the security math question to proceed",
     cameraPreviewTitle: "Captured Photo Preview",
     cameraLiveTitle: "Direct Camera Capture",
     cameraPreviewSub: "Please make sure the photo is clear before confirming",
@@ -162,6 +182,15 @@ export const FORM_UI_STRINGS = {
     successTitle: "ส่งใบสมัครลงทะเบียนสำเร็จแล้ว!",
     successDesc: "บันทึกข้อมูลและคำตอบของคุณในระบบเรียบร้อยแล้ว ผู้ดูแลระบบจะตรวจสอบและติดต่อกลับเพื่อเปิดใช้งานบัญชี",
     closeSuccessBtn: "ปิดหน้าต่างและกลับสู่หน้าหลัก",
+    goToMyPortalBtn: "เข้าสู่พอร์ทัลของฉันตอนนี้ 🚀",
+    goToMyPortalSub: "กรอกรหัสการสมัครของคุณไว้ให้เรียบร้อยแล้วเพื่อความสะดวกรวดเร็ว",
+    emailNoticeTitle: "ส่งสำเนาไปยังอีเมลของคุณเรียบร้อยแล้ว",
+    emailNoticeDesc: "สำเนารายละเอียดการสมัครและรหัสของคุณได้ถูกส่งไปยังอีเมลของคุณแล้ว กรุณาตรวจสอบกล่องจดหมายหรือโฟลเดอร์สแปม",
+    mathChallengeTitle: "การตรวจสอบความปลอดภัย (Math Challenge)",
+    mathChallengeDesc: "ตรวจพบการลงทะเบียนก่อนหน้านี้บนอุปกรณ์นี้ กรุณาตอบโจทย์เลขง่ายๆ ด้านล่างเพื่อยืนยันและดำเนินการต่อ:",
+    mathChallengePlaceholder: "กรอกคำตอบ...",
+    mathChallengeError: "คำตอบไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง",
+    mathChallengeRequired: "กรุณาตอบคำถามความปลอดภัยก่อนส่งข้อมูล",
     cameraPreviewTitle: "ตัวอย่างภาพที่ถ่าย",
     cameraLiveTitle: "ถ่ายภาพสดด้วยกล้อง",
     cameraPreviewSub: "กรุณาตรวจสอบความชัดเจนของภาพก่อนกดยืนยัน",
@@ -293,6 +322,7 @@ interface RegistrationModalProps {
   scriptUrl?: string;
   spreadsheetId?: string;
   driveFolderId?: string;
+  onOpenSubscriberPortal?: (data: { registrationId: string; name?: string }) => void;
 }
 
 export default function RegistrationModal({
@@ -301,7 +331,8 @@ export default function RegistrationModal({
   questions: propQuestions,
   scriptUrl,
   spreadsheetId,
-  driveFolderId = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7"
+  driveFolderId = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7",
+  onOpenSubscriberPortal
 }: RegistrationModalProps) {
   const [questions, setQuestions] = useState<RegistrationQuestion[]>(() => {
     if (propQuestions && propQuestions.length > 0) return propQuestions;
@@ -319,6 +350,7 @@ export default function RegistrationModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedRegId, setCopiedRegId] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [successInfo, setSuccessInfo] = useState<{ id?: string; message?: string; name?: string; email?: string; phone?: string }>({});
@@ -326,6 +358,40 @@ export default function RegistrationModal({
   const [uploadStatusMessage, setUploadStatusMessage] = useState<string | null>(null);
   const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
   const [customButtonTitle, setCustomButtonTitle] = useState<string>("إرسال طلب التسجيل والاشتراك");
+
+  // Anti-Bot & Repeated Attempt Protection
+  const [isRepeatedDevice, setIsRepeatedDevice] = useState(false);
+  const [honeypotVal, setHoneypotVal] = useState("");
+  const formOpenedAtRef = useRef<number>(Date.now());
+  const [mathChallenge, setMathChallenge] = useState<{ num1: number; num2: number }>({ num1: 4, num2: 3 });
+  const [mathAnswer, setMathAnswer] = useState("");
+  const [mathError, setMathError] = useState<string | null>(null);
+
+  const generateNewMathChallenge = () => {
+    const n1 = Math.floor(Math.random() * 8) + 2; // 2..9
+    const n2 = Math.floor(Math.random() * 8) + 1; // 1..8
+    setMathChallenge({ num1: n1, num2: n2 });
+    setMathAnswer("");
+    setMathError(null);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      formOpenedAtRef.current = Date.now();
+      try {
+        const attempts = parseInt(localStorage.getItem("thnoon_reg_attempts_count") || "0", 10);
+        const lastReg = parseInt(localStorage.getItem("thnoon_last_reg_timestamp") || "0", 10);
+        if (attempts >= 1 || lastReg > 0) {
+          setIsRepeatedDevice(true);
+          generateNewMathChallenge();
+        } else {
+          setIsRepeatedDevice(false);
+        }
+      } catch (e) {
+        setIsRepeatedDevice(false);
+      }
+    }
+  }, [isOpen]);
   const [translationsMap, setTranslationsMap] = useState<Record<string, any>>(() => {
     let base = { ...DEFAULT_FORM_TRANSLATIONS };
     if (typeof window !== "undefined") {
@@ -963,7 +1029,21 @@ export default function RegistrationModal({
     });
 
     setErrors(newErrors);
-    const isValid = Object.keys(newErrors).length === 0;
+    let isValid = Object.keys(newErrors).length === 0;
+
+    if (isRepeatedDevice) {
+      const expected = mathChallenge.num1 + mathChallenge.num2;
+      const parsedAns = parseInt((mathAnswer || "").trim(), 10);
+      if (!mathAnswer || !mathAnswer.trim()) {
+        setMathError(t.mathChallengeRequired || "يرجى حل سؤال التحقق الحسابي للمتابعة");
+        isValid = false;
+      } else if (isNaN(parsedAns) || parsedAns !== expected) {
+        setMathError(t.mathChallengeError || "ناتج العملية الحسابية غير صحيح، يرجى إعادة المحاولة");
+        isValid = false;
+      } else {
+        setMathError(null);
+      }
+    }
 
     if (!isValid) {
       // Find first error field and scroll smoothly to it
@@ -986,6 +1066,20 @@ export default function RegistrationModal({
     setHasAttemptedSubmit(true);
     setSubmitErrorMessage(null);
     setUploadStatusMessage(null);
+
+    // 0. Anti-Bot checks (Silent & Lightweight)
+    if (honeypotVal && honeypotVal.trim() !== "") {
+      console.warn("Honeypot anti-bot triggered");
+      setSubmitErrorMessage(formLang === 'ar' ? "تم حظر الإرسال بسبب نشاط آلي غير مصرح به (Bot Protection)." : "Submission blocked due to automated bot detection.");
+      return;
+    }
+
+    const timeSpentMs = Date.now() - formOpenedAtRef.current;
+    if (timeSpentMs < 1800) {
+      setSubmitErrorMessage(formLang === 'ar' ? "تم الإرسال بسرعة غير اعتيادية، يرجى الانتظار ثانية ثم المحاولة." : "Submitted too quickly. Please take a moment and try again.");
+      return;
+    }
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
@@ -1247,6 +1341,13 @@ export default function RegistrationModal({
           phone: phoneVal,
           message: submitResult.message || `تم استلام وحفظ طلب تسجيلك بنجاح بالرقم المرجعي (${finalId}) ومزامنة البيانات وتلغرام!`
         });
+
+        // Record successful registration for anti-spam / repeat device protection
+        try {
+          const currentCount = parseInt(localStorage.getItem("thnoon_reg_attempts_count") || "0", 10);
+          localStorage.setItem("thnoon_reg_attempts_count", String(currentCount + 1));
+          localStorage.setItem("thnoon_last_reg_timestamp", String(Date.now()));
+        } catch (e) {}
       } else {
         setSubmitErrorMessage(
           submitResult?.message ||
@@ -1506,20 +1607,74 @@ export default function RegistrationModal({
                     </p>
                   </div>
 
-                  {/* بطاقة رقم التسجيل وبيانات المشترك المعتمدة */}
-                  <div className="bg-slate-950/80 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4 text-center space-y-2 max-w-md mx-auto shadow-md">
-                    <span className="text-[11px] font-semibold text-slate-400 block">
-                      {formLang === "en" ? "Official Registration ID:" : formLang === "th" ? "รหัสการสมัครอย่างเป็นทางการ:" : "رقم القيد والتسجيل المعتمد:"}
+                  {/* بطاقة رقم التسجيل وبيانات المشترك المعتمدة مع زر النسخ */}
+                  <div className="bg-slate-950/90 border border-amber-500/40 rounded-2xl p-4 sm:p-5 text-center space-y-3 max-w-md mx-auto shadow-xl">
+                    <span className="text-xs font-semibold text-slate-400 block">
+                      {formLang === "en" ? "Official Registration ID" : formLang === "th" ? "รหัสการสมัครอย่างเป็นทางการ" : "رقم القيد والتسجيل المعتمد"}
                     </span>
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="font-mono text-xl sm:text-2xl font-black text-amber-400 tracking-wider">
+                    <div className="flex items-center justify-center gap-2.5">
+                      <span className="font-mono text-2xl sm:text-3xl font-black text-amber-400 tracking-wider">
                         {successInfo.id || "202686124"}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const idToCopy = successInfo.id || "202686124";
+                          navigator.clipboard.writeText(idToCopy);
+                          setCopiedRegId(true);
+                          setTimeout(() => setCopiedRegId(false), 2000);
+                        }}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center gap-1 text-xs"
+                        title={copiedRegId ? "تم النسخ" : "نسخ الرقم"}
+                      >
+                        {copiedRegId ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                        <span className="text-[11px] font-sans">{copiedRegId ? "تم النسخ" : "نسخ"}</span>
+                      </button>
                     </div>
                     {successInfo.name && (
-                      <div className="text-xs text-slate-300 pt-1 border-t border-slate-800/80 flex items-center justify-center gap-2">
-                        <span className="text-slate-400">{formLang === "en" ? "Name:" : formLang === "th" ? "ชื่อ:" : "الاسم:"}</span>
+                      <div className="text-sm text-slate-200 pt-2 border-t border-slate-800/80 flex items-center justify-center gap-2">
+                        <span className="text-slate-400 font-sans">{formLang === "en" ? "Subscriber Name:" : formLang === "th" ? "ชื่อผู้สมัคร:" : "اسم المشترك:"}</span>
                         <span className="font-bold text-slate-100">{successInfo.name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* زر الدخول المباشر إلى بوابة المشترك مع التعبئة التلقائية للبيانات */}
+                  <div className="max-w-md mx-auto space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onOpenSubscriberPortal) {
+                          onOpenSubscriberPortal({
+                            registrationId: successInfo.id || "202686124",
+                            name: successInfo.name
+                          });
+                        } else {
+                          handleResetAndClose();
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-sans font-black text-sm sm:text-base py-3.5 px-5 rounded-2xl shadow-xl hover:shadow-amber-500/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer transform hover:scale-[1.01]"
+                    >
+                      <LogIn className="w-5 h-5 stroke-[2.5]" />
+                      <span>{t.goToMyPortalBtn}</span>
+                    </button>
+                    <p className="text-[11px] text-amber-400/85 font-sans text-center">
+                      {t.goToMyPortalSub}
+                    </p>
+                  </div>
+
+                  {/* تنبيه تأكيد إرسال النسخة إلى البريد الإلكتروني للمشترك */}
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 sm:p-4 text-center max-w-md mx-auto space-y-1.5 shadow-md">
+                    <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold text-amber-300">
+                      <Mail className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>{t.emailNoticeTitle}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                      {t.emailNoticeDesc}
+                    </p>
+                    {successInfo.email && (
+                      <div className="inline-block mt-1 px-3 py-1 bg-slate-900 border border-slate-700/80 rounded-xl font-mono text-xs text-amber-300 font-semibold dir-ltr">
+                        {successInfo.email}
                       </div>
                     )}
                   </div>
@@ -2072,6 +2227,71 @@ export default function RegistrationModal({
                               );
                             })}
                         </div>
+                      </motion.div>
+                    )}
+
+                    {/* Honeypot Invisible Field (Anti-Bot) */}
+                    <div className="opacity-0 absolute -z-50 pointer-events-none h-0 w-0 overflow-hidden" aria-hidden="true">
+                      <label htmlFor="reg_field_token_hp">Leave empty</label>
+                      <input
+                        id="reg_field_token_hp"
+                        type="text"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={honeypotVal}
+                        onChange={(e) => setHoneypotVal(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Math Challenge (Triggered only when previous registration is detected on this device) */}
+                    {isRepeatedDevice && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 bg-slate-950/90 border-2 border-amber-500/40 rounded-2xl space-y-2.5 shadow-lg my-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-amber-400 font-bold text-xs sm:text-sm">
+                            <RotateCw className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>{t.mathChallengeTitle}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={generateNewMathChallenge}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs"
+                            title={formLang === 'ar' ? "تغيير المسألة" : "New Question"}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span className="text-[11px] hidden sm:inline">{formLang === 'ar' ? "مسألة أخرى" : "Refresh"}</span>
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-slate-300 leading-relaxed font-sans">
+                          {t.mathChallengeDesc}
+                        </p>
+
+                        <div className="flex items-center gap-3 pt-1">
+                          <div className="flex items-center justify-center px-4 py-2 bg-slate-900 border border-amber-500/50 rounded-xl font-mono text-base sm:text-lg font-black text-amber-400 tracking-wider shadow-inner">
+                            {mathChallenge.num1} + {mathChallenge.num2} = ?
+                          </div>
+                          <input
+                            type="number"
+                            value={mathAnswer}
+                            onChange={(e) => {
+                              setMathAnswer(e.target.value);
+                              setMathError(null);
+                            }}
+                            placeholder={t.mathChallengePlaceholder}
+                            className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-sans text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        {mathError && (
+                          <p className="text-xs text-red-400 font-bold font-sans flex items-center gap-1.5 pt-0.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{mathError}</span>
+                          </p>
+                        )}
                       </motion.div>
                     )}
 

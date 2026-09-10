@@ -96,6 +96,11 @@ export default function App() {
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [subscriberInitialCreds, setSubscriberInitialCreds] = useState<{
+    username: string;
+    password?: string;
+    notice?: string;
+  } | null>(null);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -642,6 +647,18 @@ export default function App() {
     setIsDashboardOpen(false);
   };
 
+  const handleOpenSubscriberPortalFromRegistration = (data: { registrationId: string; name?: string }) => {
+    setIsRegistrationOpen(false);
+    setSubscriberInitialCreds({
+      username: data.registrationId || data.name || "",
+      password: data.registrationId || "",
+      notice: data.name
+        ? `أهلاً بك يا ${data.name}! تم تعبئة رقمك المرجعي (${data.registrationId}) تلقائياً لتسهيل وسرعة دخولك.`
+        : `تم تعبئة رقمك المرجعي (#${data.registrationId}) تلقائياً. انقر على زر الدخول للوصول لبوابتك.`
+    });
+    setIsLoginOpen(true);
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -990,7 +1007,10 @@ export default function App() {
       {/* 5. Subscriber Login Modal */}
       <SubscriberPortal
         isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
+        onClose={() => {
+          setIsLoginOpen(false);
+          setSubscriberInitialCreds(null);
+        }}
         subscriber={subscriber}
         onLogin={handleLogin}
         onLogout={handleLogout}
@@ -998,6 +1018,9 @@ export default function App() {
           setIsLoginOpen(false);
           setIsRegistrationOpen(true);
         }}
+        initialUsername={subscriberInitialCreds?.username}
+        initialPassword={subscriberInitialCreds?.password}
+        autoFillNotice={subscriberInitialCreds?.notice}
       />
 
       {/* 6. Dynamic Registration Modal (RegistrationQuestions Sheet) */}
@@ -1007,6 +1030,7 @@ export default function App() {
         scriptUrl={currentScriptUrl}
         spreadsheetId={currentSpreadsheetId}
         driveFolderId={currentDriveFolderId}
+        onOpenSubscriberPortal={handleOpenSubscriberPortalFromRegistration}
       />
 
       {/* 7. Blocked / Suspended Account Notification Modal */}
