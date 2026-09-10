@@ -83,7 +83,8 @@ async function translateWithMyMemory(text: string, targetLang: "en" | "th"): Pro
 
   try {
     const langpair = `ar|${targetLang}`;
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleaned)}&langpair=${langpair}`;
+    const query = cleaned.length > 480 ? cleaned.slice(0, 480) : cleaned;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(query)}&langpair=${langpair}`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6000);
@@ -95,8 +96,8 @@ async function translateWithMyMemory(text: string, targetLang: "en" | "th"): Pro
       const data = await res.json();
       if (data && data.responseData && data.responseData.translatedText) {
         let result = data.responseData.translatedText.trim();
-        // Remove common MyMemory error prefixes if quota reached on free tier
-        if (!result.includes("MYMEMORY WARNING:") && !result.includes("QUERY LENGTH LIMIT")) {
+        // Remove common MyMemory error prefixes if quota reached on free tier or invalid single symbol
+        if (result && result !== "?" && !result.includes("MYMEMORY WARNING:") && !result.includes("QUERY LENGTH LIMIT")) {
           return result;
         }
       }
@@ -150,16 +151,32 @@ async function translateWithAppsScript(
     if (!scriptUrl) return null;
 
     const payload = {
-      action: "translateTexts",
       items: items.map((it) => ({
         id: it.id,
         text: cleanText(it.ar),
       })),
     };
 
-    const res = await executeAppsScriptPost(payload, scriptUrl);
-    if (res && res.success && res.results) {
-      return res.results;
+    // 1. Try POST to Apps Script with proper action argument
+    const res = await executeAppsScriptPost("translateTexts", payload, scriptUrl);
+    if (res && res.success && res.data) {
+      const results = res.data.results || (res.data.data && res.data.data.results);
+      if (results && typeof results === "object" && Object.keys(results).length > 0) {
+        return results;
+      }
+    }
+
+    // 2. Try GET to Apps Script with items query param
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 7000);
+    const getUrl = `${scriptUrl}${scriptUrl.includes("?") ? "&" : "?"}action=translateTexts&items=${encodeURIComponent(JSON.stringify(payload.items))}`;
+    const getRes = await fetch(getUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (getRes.ok) {
+      const getData = await getRes.json().catch(() => null);
+      if (getData && getData.success && getData.results) {
+        return getData.results;
+      }
     }
   } catch (err) {
     // GAS translation not configured or timed out

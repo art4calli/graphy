@@ -35,6 +35,7 @@ import {
   saveLocalSubscriberTopics
 } from "../utils/googleBackendBridge";
 import { formatImageUrl } from "../utils/imageUtils";
+import { translateBatchWithAI } from "../utils/translatorService";
 
 interface SubscriberContentManagerProps {
   currentScriptUrl?: string;
@@ -261,11 +262,11 @@ export default function SubscriberContentManager({
     });
   };
 
-  // Smart Translation Engine using AI
+  // Smart Translation Engine using AI with Multi-Tiered Fallback
   const handleTranslateAllWithAI = async () => {
     if (!currentTopic) return;
     setIsTranslating(true);
-    showNotification("جاري تشغيل الترجمة الذكية بالذكاء الاصطناعي للنصوص...", "info");
+    showNotification("جاري تشغيل الترجمة الذكية للغة الإنجليزية والتايلاندية...", "info");
 
     try {
       const itemsToTranslate: Array<{ id: string; ar: string }> = [];
@@ -297,17 +298,10 @@ export default function SubscriberContentManager({
         return;
       }
 
-      const res = await fetch("/api/ai-translate-texts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: itemsToTranslate })
-      });
+      // Call resilient multi-provider translator (Server API -> Google Apps Script -> MyMemory / Google GTX)
+      const results = await translateBatchWithAI(itemsToTranslate, currentScriptUrl);
 
-      const data = await res.json().catch(() => null);
-
-      if (res.ok && data && data.success && data.results) {
-        const results = data.results;
-
+      if (results && Object.keys(results).length > 0) {
         updateCurrentTopic((prev) => {
           const updated: SubscriberTopicContent = { ...prev };
 
@@ -339,12 +333,12 @@ export default function SubscriberContentManager({
           return updated;
         });
 
-        showNotification("تمت الترجمة الذكية بنجاح باللغتين الإنجليزية والتايلاندية!");
+        showNotification("تمت الترجمة الذكية بنجاح باللغتين الإنجليزية والتايلاندية!", "success");
       } else {
-        showNotification(data?.message || "تعذر إتمام الترجمة الذكية، تحقق من الاتصال", "error");
+        showNotification("تعذر إتمام الترجمة، يرجى التحقق من الاتصال والمحاولة ثانية", "error");
       }
     } catch (err: any) {
-      showNotification("خطأ أثناء الترجمة: " + err.message, "error");
+      showNotification("خطأ أثناء الترجمة: " + (err?.message || "خطأ غير متوقع"), "error");
     } finally {
       setIsTranslating(false);
     }
