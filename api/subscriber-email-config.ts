@@ -53,7 +53,7 @@ export default async function handler(req: any, res: any) {
       }
 
       // 2. Sync to Google Apps Script
-      const targetScriptUrl = scriptUrl || process.env.GOOGLE_SCRIPT_URL || process.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbzwdupPOk2KJr9MzfZM_JTA8GCbQFx8mlFH6cCxn0JLcH6J8g_yfrKmMTt08zZpLEcZ/exec";
+      const targetScriptUrl = scriptUrl || process.env.GOOGLE_SCRIPT_URL || process.env.VITE_GOOGLE_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbxMnMVjY34c5eRH-57LmOdWR8aeqqu0ihhFARz_IK-ISJPi-xtzqeIZTEgl8XKjylObqw/exec";
       if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
         try {
           await fetch(targetScriptUrl, {
