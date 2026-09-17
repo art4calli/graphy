@@ -28,7 +28,8 @@ import {
   Languages,
   Globe,
   LogIn,
-  Copy
+  Copy,
+  UserPlus
 } from "lucide-react";
 import { RegistrationQuestion, QuestionTranslation } from "../types";
 import { DEFAULT_FORM_TRANSLATIONS } from "../data/defaultFormTranslations";
@@ -39,6 +40,7 @@ import {
   submitRegistrationBridge,
   uploadFileToDriveBridge,
   fetchFormQuestionsBridge,
+  checkSubscriberAccountStatus,
   DEFAULT_SCRIPT_URL,
   DEFAULT_DRIVE_FOLDER_ID,
   openTelegramSmartLink,
@@ -377,9 +379,16 @@ export default function RegistrationModal({
     setMathError(null);
   };
 
+  const [existingStudentAlert, setExistingStudentAlert] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [allowSiblingRegistration, setAllowSiblingRegistration] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       formOpenedAtRef.current = Date.now();
+      setAllowSiblingRegistration(false);
       try {
         const attempts = parseInt(localStorage.getItem("thnoon_reg_attempts_count") || "0", 10);
         const lastReg = parseInt(localStorage.getItem("thnoon_last_reg_timestamp") || "0", 10);
@@ -389,11 +398,38 @@ export default function RegistrationModal({
         } else {
           setIsRepeatedDevice(false);
         }
+
+        // Smart Local Device Check with Google Sheets verification
+        const storedRegId = localStorage.getItem("thnoon_registered_student_id");
+        const storedRegName = localStorage.getItem("thnoon_registered_student_name") || "";
+        if (storedRegId) {
+          const activeScriptUrl = scriptUrl || (typeof window !== "undefined" ? localStorage.getItem("thnoon_script_url") : null) || DEFAULT_SCRIPT_URL;
+          checkSubscriberAccountStatus(storedRegId, activeScriptUrl).then((statusRes) => {
+            if (statusRes && statusRes.exists) {
+              setExistingStudentAlert({
+                id: storedRegId,
+                name: statusRes.name || storedRegName
+              });
+            } else {
+              // If student was deleted from Settings sheet, remove local token so they can register fresh!
+              localStorage.removeItem("thnoon_registered_student_id");
+              localStorage.removeItem("thnoon_registered_student_name");
+              setExistingStudentAlert(null);
+            }
+          }).catch(() => {
+            if (storedRegId) {
+              setExistingStudentAlert({ id: storedRegId, name: storedRegName });
+            }
+          });
+        } else {
+          setExistingStudentAlert(null);
+        }
       } catch (e) {
         setIsRepeatedDevice(false);
+        setExistingStudentAlert(null);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, scriptUrl]);
   const [translationsMap, setTranslationsMap] = useState<Record<string, any>>(() => {
     let base = { ...DEFAULT_FORM_TRANSLATIONS };
     if (typeof window !== "undefined") {
@@ -1346,6 +1382,8 @@ export default function RegistrationModal({
 
         // Record successful registration for anti-spam / repeat device protection
         try {
+          localStorage.setItem("thnoon_registered_student_id", finalId);
+          if (nameVal) localStorage.setItem("thnoon_registered_student_name", nameVal);
           const currentCount = parseInt(localStorage.getItem("thnoon_reg_attempts_count") || "0", 10);
           localStorage.setItem("thnoon_reg_attempts_count", String(currentCount + 1));
           localStorage.setItem("thnoon_last_reg_timestamp", String(Date.now()));
@@ -1790,6 +1828,45 @@ export default function RegistrationModal({
               ) : (
                 /* DYNAMIC QUESTIONS FORM */
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* تنبيه البصمة المحلية والتسجيل المكرر الذكي / نافذة تسجيل الإخوان */}
+                  {existingStudentAlert && !allowSiblingRegistration && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-l from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/50 shadow-lg text-white space-y-2.5">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                          <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="font-bold text-sm text-emerald-300">
+                            أنت مسجل لدينا مسبقاً برقم قيد ({existingStudentAlert.id}) {existingStudentAlert.name ? `باسم (${existingStudentAlert.name})` : ""}
+                          </div>
+                          <p className="text-xs text-slate-300 leading-relaxed">
+                            لا داعي لإعادة التسجيل مرة أخرى، حسابك مسجل ومتاح لك الانتقال المباشر لصفحتك الخاصة.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1 flex-wrap justify-end">
+                        <a
+                          href={`/?reg_id=${encodeURIComponent(existingStudentAlert.id)}`}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+                        >
+                          <LogIn className="w-3.5 h-3.5" />
+                          <span>الانتقال إلى صفحتي الخاصة</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => setAllowSiblingRegistration(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                          title="التسجيل لطالب جديد من نفس الجهاز"
+                        >
+                          <UserPlus className="w-3.5 h-3.5 text-amber-400" />
+                          <span>تسجيل لطالب آخر (أخ / فرد من العائلة)</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {questions.map((q, idx) => {
                     const fieldKey = String(q.id || q.question);
                     const val = answers[fieldKey] || "";

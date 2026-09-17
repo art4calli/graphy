@@ -294,14 +294,20 @@ export interface RegistrationAnswerRecord {
   rawRow?: string[];           // القيم الخام للصف
 }
 
+export type SubscriberStageStatus = "معتمد" | "متقدم" | "قيد المراجعة" | "مؤرشف";
+
 export interface SettingsSubscriberRecord {
   rowIndex: number;            // رقم الصف في ورقة Settings (2, 3...)
-  name: string;                // العامود Z: اسم المشترك
+  name: string;                // العامود Z / B: اسم المشترك
   registrationId: string;      // العامود AA: رقم التسجيل
   topicId: string;             // العامود A: رقم الصفحة الخاصة
   status: string;              // العامود AB: مسموح / ممنوع للدخول
   isAllowed: boolean;          // حالة السماح بالدخول
   deviceCount: string;         // العامود AC: عدد الأجهزة
+  subscriberStatus?: SubscriberStageStatus | string; // العامود C: حالة المشترك (معتمد / متقدم / قيد المراجعة / مؤرشف)
+  isArchived?: boolean;        // هل المشترك مؤرشف
+  archiveTag?: string;         // اسم دفعة الأرشيف وتاريخها
   rawRow?: string[];           // القيم الخام للصف
 }
+
 

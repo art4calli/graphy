@@ -3500,6 +3500,8 @@ app.get("/api/settings-subscribers", async (req, res) => {
 
       const topicId = row[0] !== undefined && row[0] !== null ? row[0].toString().trim() : "1";
       const nameB = row[1] !== undefined && row[1] !== null ? row[1].toString().trim() : "";
+      const subStatusRaw = row[2] !== undefined && row[2] !== null ? row[2].toString().trim() : "";
+      const archiveTag = row[3] !== undefined && row[3] !== null ? row[3].toString().trim() : "";
       const nameZ = row[25] !== undefined && row[25] !== null ? row[25].toString().trim() : "";
       const regId = row[26] !== undefined && row[26] !== null ? row[26].toString().trim() : "";
       const status = row[27] !== undefined && row[27] !== null ? row[27].toString().trim() : "مسموح";
@@ -3510,6 +3512,19 @@ app.get("/api/settings-subscribers", async (req, res) => {
 
       const isAllowed = !(status === "ممنوع" || status === "معطل" || status === "محظور" || status === "لا");
 
+      let finalSubStatus = subStatusRaw;
+      if (!finalSubStatus) {
+        if (topicId === "2" || topicId === "متقدم") {
+          finalSubStatus = "متقدم";
+        } else if (!isAllowed) {
+          finalSubStatus = "قيد المراجعة";
+        } else {
+          finalSubStatus = "معتمد";
+        }
+      }
+
+      const isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.includes("مؤرشف") || Boolean(archiveTag));
+
       records.push({
         rowIndex: r + 1,
         name: finalName,
@@ -3518,6 +3533,9 @@ app.get("/api/settings-subscribers", async (req, res) => {
         status: status || "مسموح",
         isAllowed,
         deviceCount: devCount || "1",
+        subscriberStatus: finalSubStatus,
+        isArchived,
+        archiveTag,
         rawRow: row.map((c: any) => (c !== null && c !== undefined ? c.toString().trim() : ""))
       });
     }
@@ -3537,7 +3555,7 @@ app.get("/api/settings-subscribers", async (req, res) => {
 // POST /api/settings-subscribers/update - Update a subscriber in Settings sheet
 app.post("/api/settings-subscribers/update", async (req, res) => {
   try {
-    const { rowIndex, registrationId, name, topicId, status, deviceCount, resetRegisteredDevices, scriptUrl } = req.body;
+    const { rowIndex, registrationId, name, topicId, status, deviceCount, subscriberStatus, archiveTag, resetRegisteredDevices, scriptUrl } = req.body;
     const targetScriptUrl = scriptUrl?.trim() || currentScriptUrl;
 
     if (!targetScriptUrl) {
@@ -3552,7 +3570,7 @@ app.post("/api/settings-subscribers/update", async (req, res) => {
 
     // 1. First Attempt: GET request
     try {
-      const payloadObj = { name, topicId, status, deviceCount, resetRegisteredDevices };
+      const payloadObj = { name, topicId, status, deviceCount, subscriberStatus, archiveTag, resetRegisteredDevices };
       const getUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}action=updateSettingsSubscriber&rowIndex=${encodeURIComponent(rowIndex || "")}&registrationId=${encodeURIComponent(registrationId || "")}&data=${encodeURIComponent(JSON.stringify(payloadObj))}`;
       const getRes = await fetch(getUrl, {
         headers: { "Accept": "application/json" },
@@ -3585,8 +3603,10 @@ app.post("/api/settings-subscribers/update", async (req, res) => {
           topicId,
           status,
           deviceCount,
+          subscriberStatus,
+          archiveTag,
           resetRegisteredDevices,
-          updatedData: { name, topicId, status, deviceCount, resetRegisteredDevices }
+          updatedData: { name, topicId, status, deviceCount, subscriberStatus, archiveTag, resetRegisteredDevices }
         });
 
         const response = await fetch(targetScriptUrl, {
@@ -3738,7 +3758,7 @@ app.post("/api/settings-subscribers/delete", async (req, res) => {
 // POST /api/settings-subscribers/add - Add a new subscriber to Settings sheet
 app.post("/api/settings-subscribers/add", async (req, res) => {
   try {
-    const { name, registrationId, topicId, status, deviceCount, scriptUrl } = req.body;
+    const { name, registrationId, topicId, status, deviceCount, subscriberStatus, scriptUrl } = req.body;
     const targetScriptUrl = scriptUrl?.trim() || currentScriptUrl;
 
     if (!targetScriptUrl) {
@@ -3754,7 +3774,8 @@ app.post("/api/settings-subscribers/add", async (req, res) => {
       registrationId,
       topicId: topicId || "1",
       status: status || "مسموح",
-      deviceCount: deviceCount || "1"
+      deviceCount: deviceCount || "1",
+      subscriberStatus: subscriberStatus || "معتمد"
     });
 
     const response = await fetch(targetScriptUrl, {
@@ -3789,6 +3810,93 @@ app.post("/api/settings-subscribers/add", async (req, res) => {
     });
   } catch (error: any) {
     console.error("Add settings subscriber error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/settings-subscribers/archive - Archive completed course and sort by status colors
+app.post("/api/settings-subscribers/archive", async (req, res) => {
+  try {
+    const { archiveSheetName, scriptUrl } = req.body;
+    const targetScriptUrl = scriptUrl?.trim() || currentScriptUrl;
+
+    if (!targetScriptUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "رابط Google Apps Script غير مضبوط لتنفيذ أرشفة الدورة"
+      });
+    }
+
+    let resultData: any = null;
+    let requestError: any = null;
+
+    // 1. Try GET request first
+    try {
+      const getUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}action=archiveCompletedCourse&archiveSheetName=${encodeURIComponent(archiveSheetName || "")}`;
+      const getRes = await fetch(getUrl, {
+        headers: { "Accept": "application/json" },
+        signal: AbortSignal.timeout(15000)
+      });
+      const getText = await getRes.text().catch(() => "");
+      try {
+        const parsed = JSON.parse(getText);
+        if (parsed && (parsed.success || parsed.archiveSheetName)) {
+          resultData = parsed;
+        }
+      } catch (pErr) {
+        if (getText.includes('"success":true') || getText.includes('"success": true')) {
+          resultData = { success: true, message: "تمت أرشفة الدورة بنجاح" };
+        }
+      }
+    } catch (gErr: any) {
+      requestError = gErr;
+    }
+
+    // 2. Fallback POST
+    if (!resultData || !resultData.success) {
+      try {
+        const payload = JSON.stringify({
+          action: "archiveCompletedCourse",
+          archiveSheetName
+        });
+        const postRes = await fetch(targetScriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: payload,
+          redirect: "follow",
+          signal: AbortSignal.timeout(15000)
+        });
+        const postText = await postRes.text().catch(() => "");
+        try {
+          const parsed = JSON.parse(postText);
+          if (parsed && (parsed.success || parsed.archiveSheetName)) {
+            resultData = parsed;
+          }
+        } catch (pErr) {
+          if (postText.includes('"success":true') || postText.includes('"success": true')) {
+            resultData = { success: true, message: "تمت أرشفة الدورة بنجاح" };
+          }
+        }
+      } catch (pErr: any) {
+        requestError = pErr;
+      }
+    }
+
+    if (resultData && resultData.success) {
+      return res.json({
+        success: true,
+        message: resultData.message || "تمت أرشفة الدورة وترتيب المشتركين حسب الألوان بنجاح",
+        archiveSheetName: resultData.archiveSheetName,
+        archivedCount: resultData.archivedCount
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: resultData?.message || resultData?.error || requestError?.message || "تعذر إكمال عملية الأرشفة في الشيت"
+    });
+  } catch (error: any) {
+    console.error("Archive settings subscribers error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 });

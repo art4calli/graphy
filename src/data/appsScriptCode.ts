@@ -98,6 +98,15 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify(deleteSubGetRes))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    // أرشفة وترتيب بيانات الدورة المنتهية عبر GET
+    if (action === "archiveCompletedCourse") {
+      var archiveGetRes = archiveCompletedCourseInSheet({
+        archiveSheetName: e.parameter.archiveSheetName || ""
+      });
+      return ContentService.createTextOutput(JSON.stringify(archiveGetRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     
     // حفظ استفسار عبر GET
     if (action === "submitInquiry") {
@@ -287,6 +296,13 @@ function doPost(e) {
     else if (action === "addSettingsSubscriber" || action === "addSubscriber") {
       var addSubRes = addSettingsSubscriberToSheet(postData);
       return ContentService.createTextOutput(JSON.stringify(addSubRes))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // ص) أرشفة وترتيب بيانات الدورة المنتهية
+    else if (action === "archiveCompletedCourse" || action === "archiveCourse") {
+      var archivePostRes = archiveCompletedCourseInSheet(postData);
+      return ContentService.createTextOutput(JSON.stringify(archivePostRes))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -960,6 +976,15 @@ function submitRegistration(data) {
         settingsSheet.getRange(targetSettingsRow, 26).setValue(displayName);
         // 3. رقم التسجيل في العامود AA (العمود 27)
         settingsSheet.getRange(targetSettingsRow, 27).setValue(registrationId);
+
+        // حالة المشترك في العامود C (العمود 3): قيد المراجعة افتراضياً للتسجيل الجديد بانتظار الاعتماد
+        var curSubStatus = settingsSheet.getRange(targetSettingsRow, 3).getValue();
+        if (!curSubStatus) {
+          settingsSheet.getRange(targetSettingsRow, 3).setValue("قيد المراجعة");
+          try {
+            settingsSheet.getRange(targetSettingsRow, 1, 1, 4).setBackground("#fef3c7").setFontColor("#92400e");
+          } catch(eColor) {}
+        }
 
         // إذا كان العمود AB (حالة الاشتراك) فارغاً، نتركه أو نضعه مسموح افتراضياً
         var curStatus = settingsSheet.getRange(targetSettingsRow, 28).getValue();
@@ -2934,15 +2959,31 @@ function getSettingsSubscribersData() {
       // Check if row has any subscriber data
       var topicId = (r[0] !== null && r[0] !== undefined) ? r[0].toString().trim() : "1"; // Col A
       var nameB = (r[1] !== null && r[1] !== undefined) ? r[1].toString().trim() : "";    // Col B
+      var subStatusRaw = (r[2] !== null && r[2] !== undefined) ? r[2].toString().trim() : ""; // Col C: حالة المشترك
+      var archiveTag = (r[3] !== null && r[3] !== undefined) ? r[3].toString().trim() : ""; // Col D: وسام الأرشيف
       var nameZ = (r[25] !== null && r[25] !== undefined) ? r[25].toString().trim() : "";  // Col Z
       var regId = (r[26] !== null && r[26] !== undefined) ? r[26].toString().trim() : "";  // Col AA
-      var status = (r[27] !== null && r[27] !== undefined) ? r[27].toString().trim() : "مسموح"; // Col AB
+      var status = (r[27] !== null && r[27] !== undefined) ? r[27].toString().trim() : "مسموح"; // Col AB: مسموح/ممنوع للدخول
       var deviceCount = (r[28] !== null && r[28] !== undefined) ? r[28].toString().trim() : "1"; // Col AC
 
       var finalName = nameZ || nameB;
       if (!finalName && !regId && !topicId) continue;
 
       var isAllowed = !(status === "ممنوع" || status === "معطل" || status === "محظور" || status === "لا");
+
+      // تحديد وتصنيف حالة المشترك بدقة (معتمد / متقدم / قيد المراجعة / مؤرشف)
+      var finalSubStatus = subStatusRaw;
+      if (!finalSubStatus) {
+        if (topicId === "2" || topicId === "متقدم") {
+          finalSubStatus = "متقدم";
+        } else if (status === "ممنوع" || status === "معطل" || status === "محظور") {
+          finalSubStatus = "قيد المراجعة";
+        } else {
+          finalSubStatus = "معتمد";
+        }
+      }
+
+      var isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.indexOf("مؤرشف") !== -1 || Boolean(archiveTag));
 
       records.push({
         rowIndex: i + 2,
@@ -2952,6 +2993,9 @@ function getSettingsSubscribersData() {
         status: status || "مسموح",
         isAllowed: isAllowed,
         deviceCount: deviceCount || "1",
+        subscriberStatus: finalSubStatus,
+        isArchived: isArchived,
+        archiveTag: archiveTag,
         rawRow: r.map(function(c) { return c !== null && c !== undefined ? c.toString().trim() : ""; })
       });
     }
@@ -2967,7 +3011,7 @@ function getSettingsSubscribersData() {
   }
 }
 
-// 15. دالة تعديل بيانات المشترك في ورقة Settings
+// 15. دالة تعديل بيانات المشترك في ورقة Settings وتطبيق الألوان التلقائية
 function updateSettingsSubscriberInSheet(postData) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -3015,19 +3059,30 @@ function updateSettingsSubscriberInSheet(postData) {
       if (cleanName) rowVals[1] = cleanName;  // Col B
     }
 
-    // 3. العامود AA: رقم التسجيل
+    // 3. العامود C: حالة المشترك (معتمد / متقدم / قيد المراجعة / مؤرشف)
+    if (updated.subscriberStatus !== undefined && updated.subscriberStatus !== null) {
+      var cleanSubStatus = updated.subscriberStatus.toString().trim() || "معتمد";
+      rowVals[2] = cleanSubStatus; // Col C
+    }
+
+    // 4. العامود D: وسام الأرشيف
+    if (updated.archiveTag !== undefined && updated.archiveTag !== null) {
+      rowVals[3] = updated.archiveTag.toString().trim(); // Col D
+    }
+
+    // 5. العامود AA: رقم التسجيل
     if (updated.registrationId !== undefined && updated.registrationId !== null) {
       var cleanRegId = updated.registrationId.toString().trim();
       rowVals[26] = cleanRegId; // Col AA
     }
 
-    // 4. العامود AB: مسموح / ممنوع للدخول
+    // 6. العامود AB: مسموح / ممنوع للدخول
     if (updated.status !== undefined && updated.status !== null) {
       var cleanStatus = updated.status.toString().trim() || "مسموح";
       rowVals[27] = cleanStatus; // Col AB
     }
 
-    // 5. العامود AC: عدد الأجهزة
+    // 7. العامود AC: عدد الأجهزة
     if (updated.deviceCount !== undefined && updated.deviceCount !== null) {
       var cleanDevCount = updated.deviceCount.toString().trim() || "1";
       rowVals[28] = cleanDevCount; // Col AC
@@ -3041,11 +3096,33 @@ function updateSettingsSubscriberInSheet(postData) {
     }
 
     sheet.getRange(targetRowIndex, 1, 1, lastCol).setValues([rowVals]);
+
+    // تلوين الصف في الشيت تلقائياً حسب لون حالته (🟢 معتمد، 🔵 متقدم، 🟡 قيد المراجعة، ⚪ مؤرشف)
+    try {
+      var statusColor = (rowVals[2] || "").toString().trim();
+      var cBg = "#ffffff";
+      var cFg = "#0f172a";
+      if (statusColor.indexOf("معتمد") !== -1) {
+        cBg = "#d1fae5"; // أخضر فاتح
+        cFg = "#065f46";
+      } else if (statusColor.indexOf("متقدم") !== -1) {
+        cBg = "#dbeafe"; // أزرق فاتح
+        cFg = "#1e40af";
+      } else if (statusColor.indexOf("مراجعة") !== -1) {
+        cBg = "#fef3c7"; // أصفر فاتح
+        cFg = "#92400e";
+      } else if (statusColor.indexOf("مؤرشف") !== -1 || statusColor.indexOf("أرشيف") !== -1) {
+        cBg = "#f1f5f9"; // رمادي فاتح
+        cFg = "#475569";
+      }
+      sheet.getRange(targetRowIndex, 1, 1, 4).setBackground(cBg).setFontColor(cFg);
+    } catch(colorErr) {}
+
     SpreadsheetApp.flush();
 
     return {
       success: true,
-      message: "تم تحديث بيانات المشترك بنجاح في ورقة Settings",
+      message: "تم تحديث بيانات المشترك بنجاح في ورقة Settings وتطبيق التلوين",
       rowIndex: targetRowIndex
     };
   } catch (err) {
@@ -3116,25 +3193,165 @@ function addSettingsSubscriberToSheet(postData) {
     var newRegId = postData.registrationId ? postData.registrationId.toString().trim() : "";
     var newStatus = postData.status ? postData.status.toString().trim() : "مسموح";
     var newDevCount = postData.deviceCount ? postData.deviceCount.toString().trim() : "1";
+    var newSubStatus = postData.subscriberStatus ? postData.subscriberStatus.toString().trim() : "معتمد";
 
     var newRow = new Array(30).fill("");
-    newRow[0] = newTopicId || "1";      // Col A
-    newRow[1] = newName;               // Col B
-    newRow[25] = newName;              // Col Z
-    newRow[26] = newRegId;             // Col AA
-    newRow[27] = newStatus || "مسموح"; // Col AB
-    newRow[28] = newDevCount || "1";   // Col AC
+    newRow[0] = newTopicId || "1";          // Col A
+    newRow[1] = newName;                   // Col B
+    newRow[2] = newSubStatus || "معتمد";    // Col C
+    newRow[25] = newName;                  // Col Z
+    newRow[26] = newRegId;                 // Col AA
+    newRow[27] = newStatus || "مسموح";     // Col AB
+    newRow[28] = newDevCount || "1";       // Col AC
 
     sheet.appendRow(newRow);
+    var addedRow = sheet.getLastRow();
+
+    // تطبيق لون الحالة
+    try {
+      var cBg = "#d1fae5";
+      var cFg = "#065f46";
+      if (newSubStatus.indexOf("متقدم") !== -1) { cBg = "#dbeafe"; cFg = "#1e40af"; }
+      else if (newSubStatus.indexOf("مراجعة") !== -1) { cBg = "#fef3c7"; cFg = "#92400e"; }
+      else if (newSubStatus.indexOf("مؤرشف") !== -1) { cBg = "#f1f5f9"; cFg = "#475569"; }
+      sheet.getRange(addedRow, 1, 1, 4).setBackground(cBg).setFontColor(cFg);
+    } catch(cErr) {}
+
     SpreadsheetApp.flush();
 
     return {
       success: true,
       message: "تمت إضافة المشترك بنجاح إلى ورقة Settings",
-      rowIndex: sheet.getLastRow()
+      rowIndex: addedRow
     };
   } catch (err) {
     Logger.log("addSettingsSubscriberToSheet error: " + err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+// 18. دالة أرشفة وترتيب بيانات الدورة المنتهية (Soft Archiving)
+function archiveCompletedCourseInSheet(postData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Settings') || ss.getSheetByName('الإعدادات') || ss.getSheetByName('اعدادات');
+    if (!sheet) {
+      return { success: false, message: "ورقة Settings غير موجودة" };
+    }
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = Math.max(sheet.getLastColumn(), 30);
+    if (lastRow < 2) {
+      return { success: false, message: "لا توجد سجلات للأرشفة في ورقة Settings" };
+    }
+
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = String(now.getMonth() + 1).padStart(2, '0');
+    var d = String(now.getDate()).padStart(2, '0');
+    var defaultName = "أرشيف_" + y + "_" + m + "_" + d;
+    var archiveSheetName = (postData.archiveSheetName || defaultName).toString().trim();
+
+    // إنشاء ورقة الأرشيف إن لم تكن موجودة
+    var archiveSheet = ss.getSheetByName(archiveSheetName);
+    if (!archiveSheet) {
+      archiveSheet = ss.insertSheet(archiveSheetName);
+    }
+
+    // إعداد ترويسة الأعمدة
+    var headerVals = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    headerVals[0] = "رقم الصفحة (A)";
+    headerVals[1] = "اسم المشترك (B)";
+    headerVals[2] = "حالة المشترك (C)";
+    headerVals[3] = "وسام الأرشيف (D)";
+    archiveSheet.getRange(1, 1, 1, lastCol).setValues([headerVals]).setFontWeight("bold").setBackground("#e2e8f0").setFontColor("#1e293b");
+
+    var allRows = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var rowsToArchive = [];
+    var targetRowIndices = [];
+
+    for (var i = 0; i < allRows.length; i++) {
+      var r = allRows[i];
+      var name = (r[25] || r[1] || "").toString().trim();
+      var regId = (r[26] || "").toString().trim();
+      var curStatus = (r[2] || "").toString().trim();
+      if (!name && !regId) continue;
+
+      // تخطي الطلاب المؤرشفين مسبقاً منعاً لتكرار الأرشفة
+      if (curStatus === "مؤرشف" || curStatus === "أرشيف" || (r[3] && r[3].toString().trim().length > 0)) {
+        continue;
+      }
+
+      if (!curStatus) {
+        curStatus = (r[0] == "2") ? "متقدم" : "معتمد";
+      }
+
+      r[2] = curStatus;
+      r[3] = archiveSheetName;
+      rowsToArchive.push({ row: r, status: curStatus, originalRowIndex: i + 2 });
+      targetRowIndices.push(i + 2);
+    }
+
+    if (rowsToArchive.length === 0) {
+      return { 
+        success: true, 
+        message: "جميع المشتركين مؤرشفون بالفعل أو لا توجد سجلات نشطة جديدة للأرشفة.",
+        archivedCount: 0,
+        archiveSheetName: archiveSheetName
+      };
+    }
+
+    // الفرز المنطقي حسب الألوان:
+    // 1. 🟢 معتمد / نشط
+    // 2. 🔵 متقدم
+    // 3. 🟡 قيد المراجعة
+    // 4. أخرين
+    var getStatusPriority = function(st) {
+      if (st.indexOf("معتمد") !== -1) return 1;
+      if (st.indexOf("متقدم") !== -1) return 2;
+      if (st.indexOf("مراجعة") !== -1) return 3;
+      return 4;
+    };
+
+    rowsToArchive.sort(function(a, b) {
+      return getStatusPriority(a.status) - getStatusPriority(b.status);
+    });
+
+    // نسخ البيانات المفروزة إلى ورقة الأرشيف
+    var sortedRowsData = rowsToArchive.map(function(item) { return item.row; });
+    var startRow = archiveSheet.getLastRow() + 1;
+    archiveSheet.getRange(startRow, 1, sortedRowsData.length, lastCol).setValues(sortedRowsData);
+
+    // تلوين الأسطر في شيت الأرشيف حسب الحالة
+    for (var a = 0; a < rowsToArchive.length; a++) {
+      var item = rowsToArchive[a];
+      var cBg = "#ffffff";
+      var cFg = "#0f172a";
+      if (item.status.indexOf("معتمد") !== -1) { cBg = "#d1fae5"; cFg = "#065f46"; }
+      else if (item.status.indexOf("متقدم") !== -1) { cBg = "#dbeafe"; cFg = "#1e40af"; }
+      else if (item.status.indexOf("مراجعة") !== -1) { cBg = "#fef3c7"; cFg = "#92400e"; }
+      else { cBg = "#f1f5f9"; cFg = "#475569"; }
+      archiveSheet.getRange(startRow + a, 1, 1, 4).setBackground(cBg).setFontColor(cFg);
+    }
+
+    // تحديث ورقة Settings الأصلية: وسم السجلات بـ «⚪ مؤرشف» ووضع اسم الأرشيف
+    for (var k = 0; k < targetRowIndices.length; k++) {
+      var rIdx = targetRowIndices[k];
+      sheet.getRange(rIdx, 3).setValue("مؤرشف"); // Col C
+      sheet.getRange(rIdx, 4).setValue(archiveSheetName); // Col D
+      sheet.getRange(rIdx, 1, 1, 4).setBackground("#f1f5f9").setFontColor("#475569");
+    }
+
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      message: "تم بنجاح إنشاء شيت الأرشيف [" + archiveSheetName + "] ونقل وترتيب " + rowsToArchive.length + " مشترك حسب الألوان ووسمهم في الشيت الأساسي.",
+      archiveSheetName: archiveSheetName,
+      archivedCount: rowsToArchive.length
+    };
+  } catch(err) {
+    Logger.log("archiveCompletedCourseInSheet error: " + err.message);
     return { success: false, error: err.message };
   }
 }

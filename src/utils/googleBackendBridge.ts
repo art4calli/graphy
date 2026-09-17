@@ -15,7 +15,7 @@ import { RegistrationQuestion, RegistrationAnswerRecord, SettingsSubscriberRecor
 import { formatImageUrl } from "./imageUtils";
 import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzwdupPOk2KJr9MzfZM_JTA8GCbQFx8mlFH6cCxn0JLcH6J8g_yfrKmMTt08zZpLEcZ/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMnMVjY34c5eRH-57LmOdWR8aeqqu0ihhFARz_IK-ISJPi-xtzqeIZTEgl8XKjylObqw/exec";
 export const DEFAULT_SPREADSHEET_ID = "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 export const DEFAULT_DRIVE_FOLDER_ID = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
 
@@ -1650,7 +1650,7 @@ export async function loginSubscriberBridge(
 export async function checkSubscriberAccountStatus(
   username: string,
   spreadsheetId?: string
-): Promise<{ exists: boolean; isBlocked: boolean; statusText: string; maxDevices: number }> {
+): Promise<{ exists: boolean; isBlocked: boolean; statusText: string; maxDevices: number; name?: string; regId?: string; subscriberStatus?: string }> {
   const targetSpreadsheetId = spreadsheetId || getActiveSpreadsheetId();
   const cleanUser = (username || "").trim().toLowerCase();
 
@@ -1671,12 +1671,26 @@ export async function checkSubscriberAccountStatus(
         for (const row of rows) {
           const r = row?.c || [];
           const getVal = (idx: number) => (r[idx] && r[idx].v !== null && r[idx].v !== undefined) ? r[idx].v.toString().trim() : "";
-          const sheetUser = getVal(25).toLowerCase();
-          if (sheetUser === cleanUser) {
+          const sheetUserZ = getVal(25).toLowerCase();
+          const sheetRegId = getVal(26).toLowerCase();
+          const sheetNameB = getVal(1).toLowerCase();
+          
+          if (sheetUserZ === cleanUser || sheetRegId === cleanUser || sheetNameB === cleanUser) {
             const status = getVal(27);
             const isBlocked = status === "ممنوع" || status === "معطل" || status === "محظور" || status === "لا";
             const maxDev = parseInt(getVal(28), 10) || 1;
-            return { exists: true, isBlocked, statusText: status, maxDevices: maxDev };
+            const subStatus = getVal(2) || "معتمد";
+            const foundName = getVal(25) || getVal(1);
+            const foundRegId = getVal(26);
+            return {
+              exists: true,
+              isBlocked,
+              statusText: status,
+              maxDevices: maxDev,
+              name: foundName,
+              regId: foundRegId,
+              subscriberStatus: subStatus
+            };
           }
         }
       }
@@ -1750,6 +1764,8 @@ export async function fetchSettingsSubscribersBridge(
 
             const topicId = getVal(0) || "1"; // Col A
             const nameB = getVal(1);           // Col B
+            const subStatusRaw = getVal(2);    // Col C: حالة المشترك
+            const archiveTag = getVal(3);      // Col D: وسام الأرشيف
             const nameZ = getVal(25);          // Col Z
             const regId = getVal(26);          // Col AA
             const status = getVal(27) || "مسموح"; // Col AB
@@ -1760,6 +1776,19 @@ export async function fetchSettingsSubscribersBridge(
 
             const isAllowed = !(status === "ممنوع" || status === "معطل" || status === "محظور" || status === "لا");
 
+            let finalSubStatus = subStatusRaw;
+            if (!finalSubStatus) {
+              if (topicId === "2" || topicId === "متقدم") {
+                finalSubStatus = "متقدم";
+              } else if (!isAllowed) {
+                finalSubStatus = "قيد المراجعة";
+              } else {
+                finalSubStatus = "معتمد";
+              }
+            }
+
+            const isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.includes("مؤرشف") || Boolean(archiveTag));
+
             records.push({
               rowIndex: rIdx + 2,
               name: finalName,
@@ -1768,6 +1797,9 @@ export async function fetchSettingsSubscribersBridge(
               status: status || "مسموح",
               isAllowed,
               deviceCount: devCount || "1",
+              subscriberStatus: finalSubStatus,
+              isArchived,
+              archiveTag,
               rawRow: r.c.map((cell: any) => {
                 if (!cell || cell.v === null || cell.v === undefined) return "";
                 return cell.f !== undefined ? cell.f.toString().trim() : cell.v.toString().trim();
@@ -1802,6 +1834,8 @@ export async function updateSettingsSubscriberBridge(
     topicId: string;
     status: string;
     deviceCount: string;
+    subscriberStatus?: string;
+    archiveTag?: string;
     resetRegisteredDevices?: boolean;
   },
   explicitScriptUrl?: string
@@ -1832,6 +1866,8 @@ export async function updateSettingsSubscriberBridge(
       topicId: params.topicId,
       status: params.status,
       deviceCount: params.deviceCount,
+      subscriberStatus: params.subscriberStatus,
+      archiveTag: params.archiveTag,
       resetRegisteredDevices: params.resetRegisteredDevices
     }
   }, targetScriptUrl);
@@ -1892,6 +1928,7 @@ export async function addSettingsSubscriberBridge(
     topicId: string;
     status: string;
     deviceCount: string;
+    subscriberStatus?: string;
   },
   explicitScriptUrl?: string
 ): Promise<{ success: boolean; message?: string }> {
@@ -1921,6 +1958,47 @@ export async function addSettingsSubscriberBridge(
   return {
     success: false,
     message: result.error || result.data?.message || "فشل إضافة المشترك إلى الشيت"
+  };
+}
+
+/**
+ * Universal Course Archive Bridge (Soft Archiving & Status Coloring)
+ */
+export async function archiveCompletedCourseBridge(
+  archiveSheetName?: string,
+  explicitScriptUrl?: string
+): Promise<{ success: boolean; message?: string; archiveSheetName?: string; archivedCount?: number }> {
+  const targetScriptUrl = getActiveScriptUrl(explicitScriptUrl);
+
+  // 1. Try local Express API
+  try {
+    const res = await fetch("/api/settings-subscribers/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archiveSheetName, scriptUrl: targetScriptUrl })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success) {
+        return data;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Direct Apps Script Post
+  const result = await executeAppsScriptPost("archiveCompletedCourse", { archiveSheetName }, targetScriptUrl);
+  if (result.success && result.data && result.data.success) {
+    return {
+      success: true,
+      message: result.data.message || "تمت أرشفة الدورة بنجاح في Google Sheets",
+      archiveSheetName: result.data.archiveSheetName,
+      archivedCount: result.data.archivedCount
+    };
+  }
+
+  return {
+    success: false,
+    message: result.error || result.data?.message || "فشل تنفيذ أرشفة الدورة في Google Sheets"
   };
 }
 
