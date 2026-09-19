@@ -400,26 +400,37 @@ export default function RegistrationModal({
         }
 
         // Smart Local Device Check with Google Sheets verification
-        const storedRegId = localStorage.getItem("thnoon_registered_student_id");
-        const storedRegName = localStorage.getItem("thnoon_registered_student_name") || "";
+        let storedRegId = localStorage.getItem("thnoon_registered_student_id");
+        let storedRegName = localStorage.getItem("thnoon_registered_student_name") || "";
+        if (!storedRegId) {
+          try {
+            const savedSub = localStorage.getItem("thnoon_saved_subscriber");
+            if (savedSub) {
+              const parsed = JSON.parse(savedSub);
+              if (parsed?.username) {
+                storedRegId = parsed.username;
+                storedRegName = parsed?.data?.name || parsed.username;
+              }
+            }
+          } catch(e) {}
+        }
+
         if (storedRegId) {
+          setExistingStudentAlert({
+            id: storedRegId,
+            name: storedRegName
+          });
+
           const activeScriptUrl = scriptUrl || (typeof window !== "undefined" ? localStorage.getItem("thnoon_script_url") : null) || DEFAULT_SCRIPT_URL;
           checkSubscriberAccountStatus(storedRegId, activeScriptUrl).then((statusRes) => {
             if (statusRes && statusRes.exists) {
               setExistingStudentAlert({
-                id: storedRegId,
+                id: storedRegId!,
                 name: statusRes.name || storedRegName
               });
-            } else {
-              // If student was deleted from Settings sheet, remove local token so they can register fresh!
-              localStorage.removeItem("thnoon_registered_student_id");
-              localStorage.removeItem("thnoon_registered_student_name");
-              setExistingStudentAlert(null);
             }
           }).catch(() => {
-            if (storedRegId) {
-              setExistingStudentAlert({ id: storedRegId, name: storedRegName });
-            }
+            // Keep local alert intact
           });
         } else {
           setExistingStudentAlert(null);
@@ -1778,11 +1789,33 @@ export default function RegistrationModal({
                     );
                   })()}
 
-                  <div className="pt-2">
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Activate smart sibling registration right from the success view!
+                        const prevId = successInfo.id;
+                        const prevName = successInfo.name;
+                        setExistingStudentAlert({ id: prevId, name: prevName });
+                        setAllowSiblingRegistration(true);
+                        setAnswers({});
+                        setUploadedFiles({});
+                        setErrors({});
+                        setIsSuccess(false);
+                        setSuccessInfo({ id: "", name: "", email: "", phone: "", message: "" });
+                        setSubmitErrorMessage(null);
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer border border-emerald-400/30"
+                      title="تسجيل طالب آخر من نفس العائلة برقم قيد جديد"
+                    >
+                      <UserPlus className="w-4 h-4 text-emerald-200" />
+                      <span>تسجيل طالب آخر من العائلة (تسجيل الإخوان 👨‍👩‍👧‍👦)</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={handleResetAndClose}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs px-6 py-2 rounded-xl transition-all cursor-pointer border border-slate-700"
+                      className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer border border-slate-700"
                     >
                       {t.closeSuccessBtn}
                     </button>
@@ -1864,6 +1897,55 @@ export default function RegistrationModal({
                           <span>تسجيل لطالب آخر (أخ / فرد من العائلة)</span>
                         </button>
                       </div>
+                    </div>
+                  )}
+
+                  {/* شريط وضع تسجيل الإخوان والعائلة عند التفعيل */}
+                  {allowSiblingRegistration && (
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-l from-amber-950/60 via-slate-900 to-slate-900 border border-amber-500/40 shadow-lg text-white space-y-2">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                            <UserPlus className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs sm:text-sm text-amber-300">
+                              وضع تسجيل الإخوان والعائلة نشط 👨‍👩‍👧‍👦
+                            </div>
+                            <p className="text-[11px] text-slate-300">
+                              يتم تسجيل طالب جديد مستقل تماماً من نفس الجهاز العائلي وسيتم منحه رقم قيد خاص به.
+                            </p>
+                          </div>
+                        </div>
+                        {existingStudentAlert && (
+                          <button
+                            type="button"
+                            onClick={() => setAllowSiblingRegistration(false)}
+                            className="text-xs text-slate-400 hover:text-white underline cursor-pointer px-2 py-1"
+                          >
+                            الرجوع لحساب ({existingStudentAlert.name || existingStudentAlert.id})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* خيار تفعيل التسجيل العائلي الاختياري إذا لم تكن هناك بصمة سابقة */}
+                  {!existingStudentAlert && !allowSiblingRegistration && (
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">👨‍👩‍👧‍👦</span>
+                        <span className="text-[11px] sm:text-xs">
+                          هل تسجل لأخ أو فرد آخر من نفس العائلة؟ يمكنك تفعيل التسجيل العائلي بسهولة.
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setAllowSiblingRegistration(true)}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer shrink-0"
+                      >
+                        تفعيل تسجيل الإخوان
+                      </button>
                     </div>
                   )}
 

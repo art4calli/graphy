@@ -128,7 +128,7 @@ export const SettingsSubscribersViewer: React.FC<SettingsSubscribersViewerProps>
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "stages">("table");
   const [stageFilter, setStageFilter] = useState<"all" | SubscriberStageStatus>("all");
-  const [hideArchived, setHideArchived] = useState<boolean>(false);
+  const [hideArchived, setHideArchived] = useState<boolean>(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [actionSuccessBanner, setActionSuccessBanner] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
