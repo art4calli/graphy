@@ -100,7 +100,19 @@ export const FORM_UI_STRINGS = {
     cameraShutter: "التقاط الصورة",
     cameraPickFile: "ملف من الجهاز",
     cameraSwitch: "تبديل الكاميرا",
-    zoomImage: "تكبير الصورة"
+    zoomImage: "تكبير الصورة",
+    siblingSuccessBtn: "تسجيل طالب آخر من العائلة (تسجيل الإخوان 👨‍👩‍👧‍👦)",
+    alreadyRegisteredTitle: "أنت مسجل لدينا مسبقاً برقم قيد ({id}) {name}",
+    alreadyRegisteredDesc: "لا داعي لإعادة التسجيل مرة أخرى، حسابك مسجل ومتاح لك الانتقال المباشر لصفحتك الخاصة.",
+    alreadyRegisteredGoToPortal: "الانتقال إلى صفحتي الخاصة",
+    alreadyRegisteredRegisterSibling: "تسجيل لطالب آخر (أخ / فرد من العائلة)",
+    alreadyRegisteredResetDevice: "تسجيل جديد من الصفر / مسح البصمة السابقة",
+    siblingActiveTitle: "وضع تسجيل الإخوان والعائلة نشط 👨‍👩‍👧‍👦",
+    siblingActiveDesc: "يتم تسجيل طالب جديد مستقل تماماً من نفس الجهاز العائلي وسيتم منحه رقم قيد خاص به.",
+    siblingReturnToAccount: "الرجوع لحساب ({name})",
+    siblingOptionalPrompt: "هل تسجل لأخ أو فرد آخر من نفس العائلة؟ يمكنك تفعيل التسجيل العائلي بسهولة.",
+    siblingEnableBtn: "تفعيل تسجيل الإخوان",
+    siblingResetDonePrompt: "تمت إعادة ضبط ذاكرة التسجيل بنجاح، يمكنك الآن التسجيل كطالب جديد من البداية."
   },
   en: {
     title: "Student & Subscriber Registration Form",
@@ -152,7 +164,19 @@ export const FORM_UI_STRINGS = {
     cameraShutter: "Capture Photo",
     cameraPickFile: "Choose from Device",
     cameraSwitch: "Switch Camera",
-    zoomImage: "Zoom Image"
+    zoomImage: "Zoom Image",
+    siblingSuccessBtn: "Register Another Family Member (Sibling Registration 👨‍👩‍👧‍👦)",
+    alreadyRegisteredTitle: "You are already registered with ID ({id}) {name}",
+    alreadyRegisteredDesc: "No need to re-register. Your account is active and you can go directly to your portal.",
+    alreadyRegisteredGoToPortal: "Go to My Student Portal",
+    alreadyRegisteredRegisterSibling: "Register Another Student (Sibling / Family Member)",
+    alreadyRegisteredResetDevice: "New Clean Registration / Reset Saved Device",
+    siblingActiveTitle: "Sibling & Family Registration Mode Active 👨‍👩‍👧‍👦",
+    siblingActiveDesc: "Registering a new independent student from this shared family device with a unique Registration ID.",
+    siblingReturnToAccount: "Return to account ({name})",
+    siblingOptionalPrompt: "Registering for a brother, sister, or another family member? You can enable family registration easily.",
+    siblingEnableBtn: "Enable Sibling Registration",
+    siblingResetDonePrompt: "Registration memory reset successfully. You can now register as a fresh student."
   },
   th: {
     title: "แบบฟอร์มลงทะเบียนสมาชิกและนักเรียน",
@@ -204,7 +228,19 @@ export const FORM_UI_STRINGS = {
     cameraShutter: "กดถ่ายภาพ",
     cameraPickFile: "เลือกไฟล์จากอุปกรณ์",
     cameraSwitch: "สลับกล้อง",
-    zoomImage: "ขยายรูปภาพ"
+    zoomImage: "ขยายรูปภาพ",
+    siblingSuccessBtn: "ลงทะเบียนสมาชิกครอบครัวคนอื่น (ลงทะเบียนพี่น้อง 👨‍👩‍👧‍👦)",
+    alreadyRegisteredTitle: "คุณได้ลงทะเบียนไว้แล้วด้วยรหัส ({id}) {name}",
+    alreadyRegisteredDesc: "ไม่จำเป็นต้องลงทะเบียนซ้ำ บัญชีของคุณพร้อมใช้งานและสามารถเข้าสู่หน้าพอร์ทัลได้ทันที",
+    alreadyRegisteredGoToPortal: "เข้าสู่หน้าพอร์ทัลของฉัน",
+    alreadyRegisteredRegisterSibling: "ลงทะเบียนให้นักเรียนคนอื่น (พี่น้อง / สมาชิกครอบครัว)",
+    alreadyRegisteredResetDevice: "ลงทะเบียนใหม่ตั้งแต่ต้น / ล้างประวัติอุปกรณ์นี้",
+    siblingActiveTitle: "เปิดใช้งานโหมดลงทะเบียนพี่น้องและครอบครัว 👨‍👩‍👧‍👦",
+    siblingActiveDesc: "กำลังลงทะเบียนนักเรียนใหม่แยกต่างหากจากอุปกรณ์ครอบครัวนี้ และจะได้รับรหัสการสมัครใหม่เฉพาะตัว",
+    siblingReturnToAccount: "กลับสู่บัญชี ({name})",
+    siblingOptionalPrompt: "ต้องการลงทะเบียนให้พี่น้องหรือสมาชิกคนอื่นในครอบครัวใช่หรือไม่? คุณสามารถเปิดใช้งานการลงทะเบียนครอบครัวได้ง่ายๆ",
+    siblingEnableBtn: "เปิดใช้งานลงทะเบียนพี่น้อง",
+    siblingResetDonePrompt: "รีเซ็ตหน่วยความจำการลงทะเบียนเรียบร้อยแล้ว คุณสามารถลงทะเบียนเป็นนักเรียนใหม่ได้ทันที"
   }
 };
 
@@ -428,9 +464,17 @@ export default function RegistrationModal({
                 id: storedRegId!,
                 name: statusRes.name || storedRegName
               });
+            } else if (statusRes && statusRes.exists === false) {
+              // The student was deleted from Google Sheets (RegistrationAnswers & Settings)
+              // Automatically clear local footprint to allow clean new registration!
+              try {
+                localStorage.removeItem("thnoon_registered_student_id");
+                localStorage.removeItem("thnoon_registered_student_name");
+              } catch (e) {}
+              setExistingStudentAlert(null);
             }
           }).catch(() => {
-            // Keep local alert intact
+            // Keep local alert intact on network error
           });
         } else {
           setExistingStudentAlert(null);
@@ -1420,6 +1464,19 @@ export default function RegistrationModal({
     }
   };
 
+  const resetDeviceMemory = () => {
+    try {
+      localStorage.removeItem("thnoon_registered_student_id");
+      localStorage.removeItem("thnoon_registered_student_name");
+      localStorage.removeItem("thnoon_reg_attempts_count");
+      localStorage.removeItem("thnoon_last_reg_timestamp");
+    } catch (e) {}
+    setExistingStudentAlert(null);
+    setAllowSiblingRegistration(false);
+    setIsRepeatedDevice(false);
+    setMathError(null);
+  };
+
   const handleResetAndClose = () => {
     setIsSuccess(false);
     setSubmitErrorMessage(null);
@@ -1429,6 +1486,7 @@ export default function RegistrationModal({
     setHasAttemptedSubmit(false);
     setFilePreviews({});
     setUploadedFileInfo({});
+    setAllowSiblingRegistration(false);
     onClose();
   };
 
@@ -1806,10 +1864,10 @@ export default function RegistrationModal({
                         setSubmitErrorMessage(null);
                       }}
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer border border-emerald-400/30"
-                      title="تسجيل طالب آخر من نفس العائلة برقم قيد جديد"
+                      title={t.siblingSuccessBtn || "تسجيل طالب آخر من نفس العائلة برقم قيد جديد"}
                     >
                       <UserPlus className="w-4 h-4 text-emerald-200" />
-                      <span>تسجيل طالب آخر من العائلة (تسجيل الإخوان 👨‍👩‍👧‍👦)</span>
+                      <span>{t.siblingSuccessBtn || "تسجيل طالب آخر من العائلة (تسجيل الإخوان 👨‍👩‍👧‍👦)"}</span>
                     </button>
 
                     <button
@@ -1870,10 +1928,12 @@ export default function RegistrationModal({
                         </div>
                         <div className="flex-1 space-y-1">
                           <div className="font-bold text-sm text-emerald-300">
-                            أنت مسجل لدينا مسبقاً برقم قيد ({existingStudentAlert.id}) {existingStudentAlert.name ? `باسم (${existingStudentAlert.name})` : ""}
+                            {(t.alreadyRegisteredTitle || "أنت مسجل لدينا مسبقاً برقم قيد ({id}) {name}")
+                              .replace("{id}", existingStudentAlert.id)
+                              .replace("{name}", existingStudentAlert.name ? `(${existingStudentAlert.name})` : "")}
                           </div>
                           <p className="text-xs text-slate-300 leading-relaxed">
-                            لا داعي لإعادة التسجيل مرة أخرى، حسابك مسجل ومتاح لك الانتقال المباشر لصفحتك الخاصة.
+                            {t.alreadyRegisteredDesc || "لا داعي لإعادة التسجيل مرة أخرى، حسابك مسجل ومتاح لك الانتقال المباشر لصفحتك الخاصة."}
                           </p>
                         </div>
                       </div>
@@ -1884,7 +1944,7 @@ export default function RegistrationModal({
                           className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
                         >
                           <LogIn className="w-3.5 h-3.5" />
-                          <span>الانتقال إلى صفحتي الخاصة</span>
+                          <span>{t.alreadyRegisteredGoToPortal || "الانتقال إلى صفحتي الخاصة"}</span>
                         </a>
 
                         <button
@@ -1894,7 +1954,17 @@ export default function RegistrationModal({
                           title="التسجيل لطالب جديد من نفس الجهاز"
                         >
                           <UserPlus className="w-3.5 h-3.5 text-amber-400" />
-                          <span>تسجيل لطالب آخر (أخ / فرد من العائلة)</span>
+                          <span>{t.alreadyRegisteredRegisterSibling || "تسجيل لطالب آخر (أخ / فرد من العائلة)"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={resetDeviceMemory}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                          title="مسح بصمة التسجيل السابقة والبدء من الصفر"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>{t.alreadyRegisteredResetDevice || "تسجيل جديد من الصفر / مسح البصمة السابقة"}</span>
                         </button>
                       </div>
                     </div>
@@ -1910,22 +1980,32 @@ export default function RegistrationModal({
                           </div>
                           <div>
                             <div className="font-bold text-xs sm:text-sm text-amber-300">
-                              وضع تسجيل الإخوان والعائلة نشط 👨‍👩‍👧‍👦
+                              {t.siblingActiveTitle || "وضع تسجيل الإخوان والعائلة نشط 👨‍👩‍👧‍👦"}
                             </div>
                             <p className="text-[11px] text-slate-300">
-                              يتم تسجيل طالب جديد مستقل تماماً من نفس الجهاز العائلي وسيتم منحه رقم قيد خاص به.
+                              {t.siblingActiveDesc || "يتم تسجيل طالب جديد مستقل تماماً من نفس الجهاز العائلي وسيتم منحه رقم قيد خاص به."}
                             </p>
                           </div>
                         </div>
-                        {existingStudentAlert && (
+                        <div className="flex items-center gap-2">
+                          {existingStudentAlert && (
+                            <button
+                              type="button"
+                              onClick={() => setAllowSiblingRegistration(false)}
+                              className="text-xs text-slate-400 hover:text-white underline cursor-pointer px-2 py-1"
+                            >
+                              {(t.siblingReturnToAccount || "الرجوع لحساب ({name})").replace("{name}", existingStudentAlert.name || existingStudentAlert.id)}
+                            </button>
+                          )}
                           <button
                             type="button"
-                            onClick={() => setAllowSiblingRegistration(false)}
-                            className="text-xs text-slate-400 hover:text-white underline cursor-pointer px-2 py-1"
+                            onClick={resetDeviceMemory}
+                            className="text-xs text-rose-400 hover:text-rose-300 underline cursor-pointer px-2 py-1"
+                            title="إلغاء بصمة التسجيل تماماً"
                           >
-                            الرجوع لحساب ({existingStudentAlert.name || existingStudentAlert.id})
+                            {t.alreadyRegisteredResetDevice || "مسح البصمة"}
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1936,7 +2016,7 @@ export default function RegistrationModal({
                       <div className="flex items-center gap-2">
                         <span className="text-base">👨‍👩‍👧‍👦</span>
                         <span className="text-[11px] sm:text-xs">
-                          هل تسجل لأخ أو فرد آخر من نفس العائلة؟ يمكنك تفعيل التسجيل العائلي بسهولة.
+                          {t.siblingOptionalPrompt || "هل تسجل لأخ أو فرد آخر من نفس العائلة؟ يمكنك تفعيل التسجيل العائلي بسهولة."}
                         </span>
                       </div>
                       <button
@@ -1944,7 +2024,7 @@ export default function RegistrationModal({
                         onClick={() => setAllowSiblingRegistration(true)}
                         className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer shrink-0"
                       >
-                        تفعيل تسجيل الإخوان
+                        {t.siblingEnableBtn || "تفعيل تسجيل الإخوان"}
                       </button>
                     </div>
                   )}
