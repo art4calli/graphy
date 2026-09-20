@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   RefreshCw,
   Loader2,
-  Send
+  Send,
+  UserPlus
 } from "lucide-react";
 import { SubscriberState, SubscriberCard, SubscriberTopicContent, SocialLinks } from "../types";
 import { formatImageUrl } from "../utils/imageUtils";
@@ -32,6 +33,7 @@ import {
 } from "../utils/googleBackendBridge";
 import { useLanguage } from "../context/LanguageContext";
 import { translateBatchWithAI } from "../utils/translatorService";
+import RegistrationModal from "./RegistrationModal";
 
 interface SubscriberFullPageProps {
   subscriber: SubscriberState;
@@ -39,6 +41,8 @@ interface SubscriberFullPageProps {
   logoUrl?: string;
   institutionTitle?: string;
   socialLinks?: SocialLinks;
+  scriptUrl?: string;
+  spreadsheetId?: string;
 }
 
 // Media Carousel for Cards (Images with Lightbox or Embedded Video Player)
@@ -261,8 +265,11 @@ export default function SubscriberFullPage({
   logoUrl,
   institutionTitle,
   socialLinks,
+  scriptUrl,
+  spreadsheetId,
 }: SubscriberFullPageProps) {
   const { t, dir, currentLang, setLanguage } = useLanguage();
+  const [isSiblingModalOpen, setIsSiblingModalOpen] = useState(false);
 
   // Multi-language text resolver for subscriber content
   const getLocalizedText = (arText?: string, enText?: string, thText?: string) => {
@@ -564,6 +571,16 @@ export default function SubscriberFullPage({
               <span className="hidden sm:inline">{t("subscriber_refresh_cards_btn", "تحديث البطاقات")}</span>
             </button>
 
+            {/* Sibling / Family Registration Button (Icon only) */}
+            <button
+              onClick={() => setIsSiblingModalOpen(true)}
+              title={t("subscriber_add_sibling_tooltip", "تسجيل طالب آخر من العائلة (أخ / فرد من العائلة)")}
+              aria-label={t("subscriber_add_sibling_tooltip", "تسجيل طالب آخر من العائلة (أخ / فرد من العائلة)")}
+              className="inline-flex items-center justify-center bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500 hover:to-amber-600 text-amber-300 hover:text-slate-950 border border-amber-500/40 hover:border-amber-400 rounded-xl w-8 h-8 sm:w-9 sm:h-9 text-base sm:text-lg font-bold transition-all shadow-md cursor-pointer shrink-0"
+            >
+              <span>➕</span>
+            </button>
+
             {/* Prominent Exit Button */}
             <button
               onClick={onLogout}
@@ -853,6 +870,21 @@ export default function SubscriberFullPage({
           </p>
         </div>
       </footer>
+
+      {/* Sibling / Family Registration Modal */}
+      {isSiblingModalOpen && (
+        <RegistrationModal
+          isOpen={isSiblingModalOpen}
+          onClose={() => setIsSiblingModalOpen(false)}
+          scriptUrl={scriptUrl}
+          spreadsheetId={spreadsheetId}
+          isSiblingMode={true}
+          primarySubscriber={{
+            id: subscriber.registrationId || subscriber.username || "",
+            name: subscriber.subscriberName || ""
+          }}
+        />
+      )}
     </div>
   );
 }

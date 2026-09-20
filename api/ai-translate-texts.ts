@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMnMVjY34c5eRH-57LmOdWR8aeqqu0ihhFARz_IK-ISJPi-xtzqeIZTEgl8XKjylObqw/exec";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCJdOuMaG6tWW7wKtMj5xvvcYzDvczwZ43dQCIU7GgU9ip6aw9Igy4EkCHHqw2jAZOHw/exec";
 
 // Fast dictionary for standard institution terms
 const KNOWN_TERMS: Record<string, { th: string; en: string }> = {

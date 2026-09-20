@@ -378,6 +378,31 @@ export default function App() {
     window.addEventListener("hashchange", checkDirectRoutes);
     window.addEventListener("popstate", checkDirectRoutes);
 
+    // Global event listener for opening registration form without page refresh
+    const handleOpenRegistrationEvent = () => {
+      setIsRegistrationOpen(true);
+    };
+    window.addEventListener("open_registration", handleOpenRegistrationEvent);
+
+    // Global click interceptor for any anchor/button with register hash/param
+    const handleGlobalRegistrationClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest("a, button");
+      if (!target) return;
+      const href = target.getAttribute("href") || "";
+      const action = target.getAttribute("data-action") || "";
+      if (
+        href === "#register" ||
+        href === "#registration" ||
+        href.includes("register=true") ||
+        href.includes("form=register") ||
+        action === "open-registration"
+      ) {
+        e.preventDefault();
+        setIsRegistrationOpen(true);
+      }
+    };
+    document.addEventListener("click", handleGlobalRegistrationClick);
+
     // Keyboard shortcut for discrete Admin login: Ctrl + Shift + A or Alt + A
     // and Monitoring Portal: Ctrl + Shift + M or Alt + M
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -404,6 +429,8 @@ export default function App() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("hashchange", checkDirectRoutes);
       window.removeEventListener("popstate", checkDirectRoutes);
+      window.removeEventListener("open_registration", handleOpenRegistrationEvent);
+      document.removeEventListener("click", handleGlobalRegistrationClick);
     };
   }, [setLanguage]);
 
@@ -727,6 +754,8 @@ export default function App() {
         logoUrl={profile.logoUrl}
         institutionTitle={profile.title}
         socialLinks={socialLinks}
+        scriptUrl={currentScriptUrl}
+        spreadsheetId={currentSpreadsheetId}
       />
     );
   }

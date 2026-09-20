@@ -1977,9 +1977,11 @@ function loginUser(username, password, deviceId, lat, lng, locationName, deviceI
 
       var uMatch = (normZ && (normZ === targetNormUser || normZ.indexOf(targetNormUser) !== -1 || targetNormUser.indexOf(normZ) !== -1)) ||
                    (normB && (normB === targetNormUser || normB.indexOf(targetNormUser) !== -1 || targetNormUser.indexOf(normB) !== -1)) ||
+                   (normAA && (normAA === targetNormUser || targetNormUser.indexOf(normAA) !== -1 || normAA.indexOf(targetNormUser) !== -1)) ||
                    (targetNormPass && (normZ === targetNormPass || normB === targetNormPass));
 
       var pMatch = (normAA && (normAA === targetNormPass || normAA.indexOf(targetNormPass) !== -1 || targetNormPass.indexOf(normAA) !== -1)) ||
+                   (normAA && (normAA === targetNormUser || targetNormUser.indexOf(normAA) !== -1)) ||
                    (sheetPass && password && sheetPass === password.toString().trim()) ||
                    (!normAA && !targetNormPass);
 
@@ -1991,7 +1993,7 @@ function loginUser(username, password, deviceId, lat, lng, locationName, deviceI
     }
     
     if (userRow === -1) {
-      return { success: false, message: 'اسم المشترك غير موجود، يرجى التأكد من التسجيل' };
+      return { success: false, message: 'اسم المشترك أو رقم القيد غير موجود، يرجى التأكد من التسجيل' };
     }
     
     var userData = usersData[userRowIdx];
@@ -2019,6 +2021,9 @@ function loginUser(username, password, deviceId, lat, lng, locationName, deviceI
     // ج) التحقق من الجهاز وتسجيل بصمة وموقع الجهاز في الأعمدة AD:AW
     // AD=30(29), AE=31(30), AF=32(31), AG=33(32), AH=34(33), AI=35(34)...
     var currentDeviceId = (deviceId || "").toString().trim();
+    if (!currentDeviceId) {
+      currentDeviceId = "DEV-" + Utilities.formatDate(new Date(), "GMT+3", "yyyyMMddHHmmss") + "-" + Math.floor(Math.random() * 10000);
+    }
     var currentLocText = locationName || "";
     if (!currentLocText && lat && lng) {
       currentLocText = "إحداثيات: " + lat + ", " + lng;
@@ -2111,7 +2116,12 @@ function loginUser(username, password, deviceId, lat, lng, locationName, deviceI
             isKnownDevice = true;
             // تحديث وقت آخر دخول وموقع الجهاز المعروف في خانته
             try {
+              var maxCols = settingsSheet.getMaxColumns();
+              if (maxCols < locColIdx + 1) {
+                settingsSheet.insertColumnsAfter(maxCols, (locColIdx + 1) - maxCols);
+              }
               settingsSheet.getRange(userRow, locColIdx + 1).setValue(currentLocText + " (" + Utilities.formatDate(new Date(), "GMT+3", "dd/MM HH:mm") + ")");
+              SpreadsheetApp.flush();
             } catch(e) {}
             break;
           }
@@ -2132,12 +2142,26 @@ function loginUser(username, password, deviceId, lat, lng, locationName, deviceI
           };
         }
 
-        // تسجيل الجهاز الجديد في أول خانة فارغة
+        // تسجيل الجهاز الجديد في أول خانة فارغة مع التأكد من وجود الأعمدة
         if (firstEmptyDeviceSlotIndex !== -1) {
           var targetLocCol = 30 + (firstEmptyDeviceSlotIndex * 2); // 1-based sheet column (AD=30, AF=32)
           var targetDevCol = 31 + (firstEmptyDeviceSlotIndex * 2); // 1-based sheet column (AE=31, AG=33)
 
           try {
+            var currentMaxCols = settingsSheet.getMaxColumns();
+            if (currentMaxCols < targetDevCol) {
+              settingsSheet.insertColumnsAfter(currentMaxCols, targetDevCol - currentMaxCols);
+            }
+            // إدراج رؤوس الأعمدة إذا كانت فارغة في الصف الأول
+            try {
+              var locHeader = settingsSheet.getRange(1, targetLocCol).getValue();
+              if (!locHeader) {
+                var slotNum = firstEmptyDeviceSlotIndex + 1;
+                settingsSheet.getRange(1, targetLocCol).setValue("موقع الجهاز " + slotNum);
+                settingsSheet.getRange(1, targetDevCol).setValue("معرف الجهاز " + slotNum);
+              }
+            } catch (hErr) {}
+
             settingsSheet.getRange(userRow, targetLocCol).setValue(currentLocText);
             // نسجل المعرف الكامل مع وصف الجهاز لسهولة المطابقة الموثوقة 100% في المرات القادمة
             settingsSheet.getRange(userRow, targetDevCol).setValue(currentDevText + " [ID:" + cleanCurDevId + "]");

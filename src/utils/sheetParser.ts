@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { AppData, SheetRow } from "../types";
+import { AppData, SheetRow, SubscriberTopicContent, SubscriberCard } from "../types";
 import { formatImageUrl, isVideoUrl, isActualMediaUrl } from "./imageUtils";
 
 const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID || "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";

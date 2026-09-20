@@ -303,7 +303,7 @@ export default function SiteTextsManager() {
             </button>
           </div>
         ) : (
-          Object.entries(groupedByCategory).map(([catId, catData]) => {
+          (Object.entries(groupedByCategory) as [string, { label: string; items: TranslationItem[] }][]).map(([catId, catData]) => {
             const isCollapsed = expandedCategories[catId] === true;
             const isCategoryTranslating = translatingCategory === catId;
 

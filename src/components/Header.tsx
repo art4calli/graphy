@@ -223,7 +223,7 @@ export default function Header({
             ) : (
               <button
                 onClick={onOpenLogin}
-                className="relative group overflow-hidden bg-slate-900 border border-amber-500/30 text-amber-400 hover:text-slate-950 px-4 py-2 rounded-full font-sans text-xs font-semibold shadow-lg hover:shadow-amber-500/20 transition-all duration-300"
+                className="relative group overflow-hidden bg-slate-900 border border-amber-500/30 text-amber-400 hover:text-slate-950 px-4 py-2 rounded-full font-sans text-xs font-semibold shadow-lg hover:shadow-amber-500/20 transition-all duration-300 cursor-pointer"
               >
                 <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-amber-500 to-yellow-600 scale-x-0 group-hover:scale-x-100 origin-right transition-transform duration-300 ease-out"></span>
                 <span className="relative flex items-center gap-1.5 z-10">
@@ -346,7 +346,7 @@ export default function Header({
                   onOpenLogin();
                   setIsMobileMenuOpen(false);
                 }}
-                className="w-full bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 py-3.5 rounded-xl font-sans text-sm font-bold shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-slate-900 to-slate-950 border border-amber-500/40 text-amber-300 hover:text-white py-3.5 rounded-xl font-sans text-sm font-bold shadow-lg flex items-center justify-center gap-2 cursor-pointer"
               >
                 <LogIn className="w-5 h-5" />
                 <span>{t("nav_subscriber_portal", profile.loginButtonText || "بوابة المشتركين")}</span>

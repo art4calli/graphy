@@ -27,7 +27,7 @@ const configFile = path.join(dataDir, "config.json");
 const formTranslationsFile = path.join(dataDir, "form_translations.json");
 const siteTranslationsFile = path.join(dataDir, "site_translations.json");
 
-const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxMnMVjY34c5eRH-57LmOdWR8aeqqu0ihhFARz_IK-ISJPi-xtzqeIZTEgl8XKjylObqw/exec";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCJdOuMaG6tWW7wKtMj5xvvcYzDvczwZ43dQCIU7GgU9ip6aw9Igy4EkCHHqw2jAZOHw/exec";
 let currentSpreadsheetId = process.env.SPREADSHEET_ID || "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 let currentScriptUrl = process.env.GOOGLE_SCRIPT_URL || process.env.VITE_GOOGLE_SCRIPT_URL || DEFAULT_SCRIPT_URL;
 let currentDriveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
@@ -332,7 +332,7 @@ app.post("/api/upload-drive", async (req, res) => {
 });
 
 // Fallback high-quality data in case Google Sheet is not accessible
-const FALLBACK_DATA = {
+const FALLBACK_DATA: any = {
   profile: {
     logoUrl: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?auto=format&fit=crop&q=80&w=300",
     title: "مؤسسة يوسف ذنون للخط العربي",
@@ -1317,33 +1317,58 @@ app.post("/api/login", async (req, res) => {
   if (scriptUrl && scriptUrl.trim().startsWith("http")) {
     try {
       console.log("Proxying auth to Google Apps Script Web App:", scriptUrl);
-      const response = await fetch(scriptUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "loginUser",
-          username,
-          password,
-          deviceId,
-          lat,
-          lng,
-          locationName,
-          deviceInfo
-        })
-      });
+      let responseText = "";
+      try {
+        const response = await fetch(scriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "loginUser",
+            username,
+            password,
+            deviceId,
+            lat,
+            lng,
+            locationName,
+            deviceInfo
+          })
+        });
+        responseText = await response.text();
+      } catch (postErr) {
+        console.warn("POST to Apps Script auth failed, trying GET fallback:", postErr);
+      }
+
+      // If POST was HTML/empty, try GET request
+      if (!responseText || responseText.trim().startsWith("<")) {
+        try {
+          const getParams = new URLSearchParams({
+            action: "loginUser",
+            username: String(username || ""),
+            password: String(password || ""),
+            deviceId: String(deviceId || ""),
+            lat: lat ? String(lat) : "",
+            lng: lng ? String(lng) : "",
+            locationName: String(locationName || ""),
+            deviceInfo: String(deviceInfo || ""),
+            _cb: String(Date.now())
+          });
+          const getUrl = `${scriptUrl}${scriptUrl.includes("?") ? "&" : "?"}${getParams.toString()}`;
+          const getRes = await fetch(getUrl);
+          responseText = await getRes.text();
+        } catch (getErr) {
+          console.error("GET fallback to Apps Script failed:", getErr);
+        }
+      }
       
-      const responseText = await response.text();
       console.log("Google Apps Script auth raw response:", responseText);
       
       try {
         const data = JSON.parse(responseText);
-        return res.json(data);
+        if (data && (data.success !== undefined || data.isBlocked || data.deviceLimitReached)) {
+          return res.json(data);
+        }
       } catch (parseErr) {
-        console.error("Failed to parse Auth Apps Script JSON response. Response was HTML or invalid:", responseText);
-        return res.json({
-          success: false,
-          message: "استجابة Apps Script غير صالحة. يرجى التحقق من نشر الـ Web App بصلاحية 'Anyone' وتحديث الكود."
-        });
+        console.warn("Could not parse Apps Script response as JSON, continuing to sheet fallback");
       }
     } catch (err) {
       console.error("Failed to proxy authentication to Google Apps Script:", err);

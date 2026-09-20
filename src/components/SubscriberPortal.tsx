@@ -419,8 +419,8 @@ export default function SubscriberPortal({
                     onClose();
                     if (onOpenRegistration) {
                       onOpenRegistration();
-                    } else {
-                      window.location.href = "#contact";
+                    } else if (typeof window !== "undefined") {
+                      window.dispatchEvent(new CustomEvent("open_registration"));
                     }
                   }}
                   className="w-full py-2.5 px-4 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-400 rounded-xl text-amber-300 font-sans font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"

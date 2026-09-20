@@ -811,6 +811,132 @@ export const DEFAULT_SITE_TRANSLATIONS: TranslationItem[] = [
     th: "ดาวน์โหลดรหัส QR ของสมาชิก",
     en: "Download Member QR Code"
   },
+  {
+    id: "reg_already_registered_badge",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "شارة الحساب المسجل مسبقاً",
+    ar: "حساب معتمد ومسجل مسبقاً",
+    th: "บัญชีที่ได้รับการยืนยันและลงทะเบียนแล้ว",
+    en: "Verified Registered Account"
+  },
+  {
+    id: "reg_already_registered_title",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "عنوان تنبيه التسجيل المسبق",
+    ar: "أنت مسجل لدينا مسبقاً برقم قيد ({id}) {name}",
+    th: "คุณได้ลงทะเบียนกับเราแล้วด้วยหมายเลข ({id}) {name}",
+    en: "You are already registered with ID ({id}) {name}"
+  },
+  {
+    id: "reg_already_registered_desc",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "نص تنبيه التسجيل المسبق وتوجيه المشترك",
+    ar: "لا داعي لإعادة تعبئة الاستمارة مرة أخرى، فقيدك مسجل ونشط في قاعدة البيانات الرسمية. يمكنك الدخول مباشرة إلى صفحتك الخاصة لمتابعة الدروس والشهادات والمحتوى الحصري.",
+    th: "ไม่จำเป็นต้องกรอกแบบฟอร์มใหม่อีกครั้ง ข้อมูลของคุณถูกบันทึกและใช้งานได้ในฐานข้อมูลอย่างเป็นทางการ คุณสามารถเข้าสู่พอร์ทัลสมาชิกเพื่อดูบทเรียนและเนื้อหาได้โดยตรง",
+    en: "No need to re-fill the form, your registration is active in the official database. You can directly access your subscriber portal to view your courses, certificates, and content."
+  },
+  {
+    id: "reg_already_registered_portal_btn",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "زر الدخول لبوابة المشتركين عند التسجيل المسبق",
+    ar: "الانتقال إلى صفحتي الخاصة في بوابة المشتركين",
+    th: "ไปยังพอร์ทัลสมาชิกของฉัน",
+    en: "Go to My Subscriber Portal"
+  },
+  {
+    id: "reg_already_registered_reset_title",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "عنوان خيار تعديل البيانات أو التسجيل من جديد",
+    ar: "هل ترغب في تعديل بياناتك أو التسجيل من جديد من الصفر؟",
+    th: "ต้องการแก้ไขข้อมูลของคุณหรือลงทะเบียนใหม่ตั้งแต่ต้นใช่หรือไม่?",
+    en: "Want to edit your data or register fresh from scratch?"
+  },
+  {
+    id: "reg_already_registered_reset_desc",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "إرشادات التواصل مع الإدارة للتسجيل من الصفر",
+    ar: "للحفاظ على خصوصية الحسابات ومنع التكرار، إذا كنت ترغب في التسجيل من الصفر أو تعديل بياناتك، يرجى التواصل مع الإدارة ليقوم المشرف بحذف قيدك من النظام، ثم الضغط على زر التحقق أدناه لتحديث الحالة فوراً.",
+    th: "เพื่อรักษาความเป็นส่วนตัวและป้องกันการซ้ำซ้อน หากคุณต้องการลงทะเบียนใหม่หรือแก้ไขข้อมูล โปรดติดต่อผู้ดูแลระบบเพื่อลบข้อมูลเดิม จากนั้นคลิกปุ่มตรวจสอบด้านล่างเพื่ออัปเดตสถานะทันที",
+    en: "To maintain account privacy and prevent duplication, if you wish to register from scratch or update your details, please contact the administration so a supervisor can remove your record, then click the verify button below to refresh immediately."
+  },
+  {
+    id: "reg_already_registered_contact_btn",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "زر التواصل مع الإدارة",
+    ar: "التواصل مع الإدارة عبر وسائل الاتصال",
+    th: "ติดต่อผู้ดูแลระบบ",
+    en: "Contact Administration"
+  },
+  {
+    id: "reg_server_verify_prompt",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "نص التوجيه لفحص حذف القيد من الشيت",
+    ar: "هل قامت الإدارة بحذف بياناتك من الشيت وترغب في التسجيل كطالب جديد؟ اضغط على الزر أدناه لمراجعة السيرفر وإلغاء القفل فوراً:",
+    th: "ผู้ดูแลระบบได้ลบข้อมูลของคุณออกจาก Google Sheets แล้วใช่หรือไม่? คลิกด้านล่างเพื่อตรวจสอบและปลดล็อกแบบฟอร์มเพื่อลงทะเบียนใหม่:",
+    en: "Did the admin delete your record from Google Sheets? Click below to verify and unlock the form for a new registration:"
+  },
+  {
+    id: "reg_server_verify_btn",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "زر فحص وتحديث الفورم من Google Sheets",
+    ar: "تحديث الفورم والتحقق من الشيت 🔄",
+    th: "รีเฟรชฟอร์มและตรวจสอบกับชีต 🔄",
+    en: "Refresh Form & Verify with Sheets 🔄"
+  },
+  {
+    id: "reg_server_verify_checking",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "نص جاري فحص الشيت",
+    ar: "جارٍ مراجعة الشيت وقاعدة البيانات...",
+    th: "กำลังตรวจสอบกับฐานข้อมูล Google Sheets...",
+    en: "Verifying with Google Sheets database..."
+  },
+  {
+    id: "reg_server_verify_found",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "رسالة نتيجة الفحص: بيانات المشترك لا تزال موجودة بالشيت",
+    ar: "تم التحقق من قاعدة البيانات الرسمية (Google Sheets): بيانات المشترك لا تزال مسجلة ومعتمدة بالقيد ({id}). يرجى مراجعة الإدارة لحذف القيد إذا أردت التسجيل من الصفر.",
+    th: "ตรวจสอบกับ Google Sheets เรียบร้อยแล้ว: ข้อมูลสมาชิกยังคงลงทะเบียนอยู่ภายใต้รหัส ({id}) โปรดติดต่อผู้ดูแลระบบหากต้องการลงทะเบียนใหม่ตั้งแต่ต้น",
+    en: "Verified with Google Sheets: Student data is still registered and active under ID ({id}). Please contact the admin to remove it if you wish to register from scratch."
+  },
+  {
+    id: "reg_server_verify_deleted",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "رسالة نتيجة الفحص: تم حذف القيد من الشيت وفك القفل",
+    ar: "تم التحقق من Google Sheets بنجاح: تم حذف قيدك من السيرفر! تم فك القفل وإلغاء البصمة، يمكنك الآن تعبئة الاستمارة كطالب جديد تماماً.",
+    th: "ตรวจสอบกับ Google Sheets สำเร็จ: ข้อมูลของคุณถูกลบออกจากเซิร์ฟเวอร์แล้ว! ปลดล็อกระบบเรียบร้อย คุณสามารถลงทะเบียนเป็นนักเรียนใหม่ได้ทันที",
+    en: "Verified successfully with Google Sheets: Your record was deleted by admin! The lock and memory have been cleared, you can now register as a brand new student."
+  },
+  {
+    id: "reg_sibling_form_title",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "عنوان نموذج تسجيل طالب آخر من العائلة",
+    ar: "تسجيل مشترك إضافي (أخ / فرد من العائلة) 👨‍👩‍👧‍👦",
+    th: "ลงทะเบียนสมาชิกในครอบครัว / พี่น้อง 👨‍👩‍👧‍👦",
+    en: "Register Sibling / Family Member 👨‍👩‍👧‍👦"
+  },
+  {
+    id: "reg_sibling_form_subtitle",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "وصف نموذج تسجيل طالب آخر من العائلة",
+    ar: "يتم الآن تسجيل طالب جديد مستقل من نفس العائلة تحت حساب المشترك الأساسي ({primaryName}).",
+    th: "คุณกำลังลงทะเบียนนักเรียนใหม่ที่เป็นคนในครอบครัวเดียวกันภายใต้บัญชีสมาชิกหลัก ({primaryName})",
+    en: "You are registering a new independent student under primary subscriber account ({primaryName})."
+  },
 
   // -------------------------------------------------------------
   // 10. بوابة المشتركين (Subscriber Portal)

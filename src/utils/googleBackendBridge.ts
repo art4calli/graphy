@@ -15,7 +15,7 @@ import { RegistrationQuestion, RegistrationAnswerRecord, SettingsSubscriberRecor
 import { formatImageUrl } from "./imageUtils";
 import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyrTnr3EByqLgM4nFbSKfK7n2xjxXd8M6PNCEVDnaYYIqkU2wUFaRWra5iaTEMSnD7Jg/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCJdOuMaG6tWW7wKtMj5xvvcYzDvczwZ43dQCIU7GgU9ip6aw9Igy4EkCHHqw2jAZOHw/exec";
 export const DEFAULT_SPREADSHEET_ID = "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 export const DEFAULT_DRIVE_FOLDER_ID = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
 
@@ -416,7 +416,7 @@ export async function submitRegistrationBridge(
     telegramConfig = DEFAULT_TELEGRAM_CONFIG;
   }
 
-  const enrichedPayload = {
+  const enrichedPayload: any = {
     ...regPayload,
     scriptUrl: targetScriptUrl,
     emailConfig: emailConfig,
@@ -740,7 +740,7 @@ export async function fetchFormQuestionsBridge(
           type: fieldType,
           options: opts.length > 0 ? opts : undefined,
           required: qRequired,
-          imageUrl: qImage ? formatMediaUrl(qImage) : undefined,
+          imageUrl: qImage ? formatImageUrl(qImage) : undefined,
           externalLink: (qLink && qLink !== "-") ? qLink : undefined
         });
       }
@@ -1363,8 +1363,21 @@ export async function loginSubscriberBridge(
         }
 
         // Background sync to Apps Script to ensure Google Sheet updates device info & timestamp
-        if (currentDeviceId && targetScriptUrl) {
+        if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
           try {
+            const syncParams = new URLSearchParams({
+              action: "loginUser",
+              username: cleanUser,
+              password: cleanPass,
+              deviceId: currentDeviceId,
+              lat: extra?.lat ? String(extra.lat) : "",
+              lng: extra?.lng ? String(extra.lng) : "",
+              locationName: extra?.locationName || "",
+              deviceInfo: extra?.deviceInfo || "",
+              _cb: String(Date.now())
+            });
+            const syncGetUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}${syncParams.toString()}`;
+            fetch(syncGetUrl, { mode: "no-cors" }).catch(() => {});
             executeAppsScriptPost("loginUser", {
               username: cleanUser,
               password: cleanPass,
@@ -1485,6 +1498,21 @@ export async function loginSubscriberBridge(
 
                     // Always trigger background device registration/timestamp in Google Sheets
                     try {
+                      if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
+                        const syncParams = new URLSearchParams({
+                          action: "loginUser",
+                          username: cleanUser,
+                          password: cleanPass,
+                          deviceId: currentDeviceId,
+                          lat: extra?.lat ? String(extra.lat) : "",
+                          lng: extra?.lng ? String(extra.lng) : "",
+                          locationName: extra?.locationName || "",
+                          deviceInfo: extra?.deviceInfo || "",
+                          _cb: String(Date.now())
+                        });
+                        const syncGetUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}${syncParams.toString()}`;
+                        fetch(syncGetUrl, { mode: "no-cors" }).catch(() => {});
+                      }
                       executeAppsScriptPost("loginUser", {
                         username: cleanUser,
                         password: cleanPass,
@@ -1699,6 +1727,141 @@ export async function checkSubscriberAccountStatus(
     console.warn("Status check failed:", err);
   }
   return { exists: false, isBlocked: false, statusText: "", maxDevices: 1 };
+}
+
+/**
+ * Rigorously checks whether a student's registration record still exists in Google Sheets
+ * Checks both 'RegistrationAnswers' sheet AND 'Settings' sheet.
+ * Returns:
+ * - exists: true (record is found in the sheets)
+ * - exists: false (sheets were checked successfully and record is definitely NOT present, i.e. admin deleted it)
+ * - error: if network failed or sheets could not be reached (prevents accidental wipe on network glitches)
+ */
+export async function checkStudentRecordExistsInGoogleSheets(
+  registrationId: string,
+  studentName?: string,
+  explicitSpreadsheetId?: string,
+  explicitScriptUrl?: string
+): Promise<{ exists: boolean; checked: boolean; foundIn?: string; name?: string; error?: string }> {
+  const activeSheetId = getActiveSpreadsheetId(explicitSpreadsheetId);
+  const targetScriptUrl = getActiveScriptUrl(explicitScriptUrl);
+  const cleanId = String(registrationId || "").trim().toLowerCase();
+  const cleanName = String(studentName || "").trim().toLowerCase();
+
+  if (!cleanId && !cleanName) {
+    return { exists: false, checked: true };
+  }
+
+  let sheetsCheckedCount = 0;
+
+  // 1. Check RegistrationAnswers sheet via GVIZ
+  try {
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:json&sheet=RegistrationAnswers&_cb=${Date.now()}`;
+    const res = await fetch(gvizUrl, { cache: "no-store" });
+    if (res.ok) {
+      const text = await res.text();
+      const s = text.indexOf("{");
+      const e = text.lastIndexOf("}");
+      if (s !== -1 && e !== -1) {
+        sheetsCheckedCount++;
+        const json = JSON.parse(text.substring(s, e + 1));
+        const rows = json?.table?.rows || [];
+        for (const row of rows) {
+          const cells = (row?.c || []).map((c: any) => (c?.v !== null && c?.v !== undefined) ? String(c.v).trim() : "");
+          const matchId = cleanId && cells.some(v => v.toLowerCase() === cleanId || (cleanId.length >= 5 && v.toLowerCase().includes(cleanId)));
+          const matchName = cleanName && cells.some(v => v.toLowerCase() === cleanName || (cleanName.length >= 3 && v.toLowerCase().includes(cleanName)));
+          if (matchId || matchName) {
+            return {
+              exists: true,
+              checked: true,
+              foundIn: "RegistrationAnswers",
+              name: cells[2] || cells[1] || studentName
+            };
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("RegistrationAnswers GVIZ check error:", err);
+  }
+
+  // 2. Check Settings sheet via GVIZ
+  try {
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:json&sheet=Settings&_cb=${Date.now()}`;
+    const res = await fetch(gvizUrl, { cache: "no-store" });
+    if (res.ok) {
+      const text = await res.text();
+      const s = text.indexOf("{");
+      const e = text.lastIndexOf("}");
+      if (s !== -1 && e !== -1) {
+        sheetsCheckedCount++;
+        const json = JSON.parse(text.substring(s, e + 1));
+        const rows = json?.table?.rows || [];
+        for (const row of rows) {
+          const r = row?.c || [];
+          const getVal = (idx: number) => (r[idx] && r[idx].v !== null && r[idx].v !== undefined) ? r[idx].v.toString().trim() : "";
+          const sheetUserZ = getVal(25).toLowerCase();
+          const sheetRegId = getVal(26).toLowerCase();
+          const sheetNameB = getVal(1).toLowerCase();
+
+          const matchId = cleanId && (sheetRegId === cleanId || sheetUserZ === cleanId || (cleanId.length >= 5 && (sheetRegId.includes(cleanId) || sheetUserZ.includes(cleanId))));
+          const matchName = cleanName && (sheetNameB === cleanName || sheetUserZ === cleanName || (cleanName.length >= 3 && (sheetNameB.includes(cleanName) || sheetUserZ.includes(cleanName))));
+
+          if (matchId || matchName) {
+            return {
+              exists: true,
+              checked: true,
+              foundIn: "Settings",
+              name: getVal(1) || getVal(25) || studentName
+            };
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Settings GVIZ check error:", err);
+  }
+
+  // 3. Fallback: Check via Apps Script GET (action=getRegistrationAnswers) if GVIZ could not verify
+  if (sheetsCheckedCount === 0 && targetScriptUrl && targetScriptUrl.startsWith("http")) {
+    try {
+      const gasUrl = `${targetScriptUrl}?action=getRegistrationAnswers&_cb=${Date.now()}`;
+      const gasRes = await fetch(gasUrl, { cache: "no-store" });
+      if (gasRes.ok) {
+        sheetsCheckedCount++;
+        const gasJson = await gasRes.json();
+        const records = gasJson.records || [];
+        for (const rec of records) {
+          const recId = String(rec.registrationId || rec["رقم التسجيل"] || "").toLowerCase();
+          const recName = String(rec.name || rec.nameArabic || rec["الاسم"] || rec["الاسم بالعربي"] || "").toLowerCase();
+          if ((cleanId && recId && (recId === cleanId || recId.includes(cleanId))) ||
+              (cleanName && recName && (recName === cleanName || recName.includes(cleanName)))) {
+            return {
+              exists: true,
+              checked: true,
+              foundIn: "AppsScript",
+              name: rec.name || rec["الاسم"] || studentName
+            };
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  // If at least one sheet was successfully queried and the record was not found:
+  if (sheetsCheckedCount > 0) {
+    return {
+      exists: false,
+      checked: true
+    };
+  }
+
+  // Network / fetch error fallback
+  return {
+    exists: true,
+    checked: false,
+    error: "تعذر التحقق من قاعدة البيانات حالياً بسبب انقطاع الاتصال"
+  };
 }
 
 /**
@@ -2618,7 +2781,7 @@ export function parseTelegramUrls(rawUrl?: string, registrationId?: string): Tel
 export function openTelegramSmartLink(
   targetUrlOrRegId?: string,
   explicitRegId?: string,
-  event?: React.MouseEvent
+  event?: any
 ): void {
   if (event) {
     try {
