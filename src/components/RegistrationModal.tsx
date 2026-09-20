@@ -616,12 +616,32 @@ export default function RegistrationModal({
 
   const modalBodyRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll to top when opening or changing language
+  // Scroll to top when opening, changing language, or transitioning to success view
   useEffect(() => {
-    if (isOpen && modalBodyRef.current) {
+    if (modalBodyRef.current) {
       modalBodyRef.current.scrollTop = 0;
     }
-  }, [isOpen, formLang]);
+    if (isSuccess) {
+      const timer1 = setTimeout(() => {
+        if (modalBodyRef.current) {
+          modalBodyRef.current.scrollTo({ top: 0, behavior: "instant" });
+        }
+        const topEl = document.getElementById("registration-success-header");
+        if (topEl) {
+          topEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 50);
+      const timer2 = setTimeout(() => {
+        if (modalBodyRef.current) {
+          modalBodyRef.current.scrollTop = 0;
+        }
+      }, 150);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    }
+  }, [isOpen, formLang, isSuccess]);
 
   const t = FORM_UI_STRINGS[formLang];
 
@@ -1528,6 +1548,9 @@ export default function RegistrationModal({
 
       if (submitResult && submitResult.success) {
         const finalId = submitResult.registrationId || unifiedRegId;
+        if (modalBodyRef.current) {
+          modalBodyRef.current.scrollTop = 0;
+        }
         setIsSuccess(true);
         setSuccessInfo({
           id: finalId,
@@ -1620,9 +1643,9 @@ export default function RegistrationModal({
             {/* Top Golden Ribbon */}
             <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600" />
 
-            {/* Mobile Top Controls Bar: Form Link (Icon only) + Language Flags + Close (3 Controls in 1 Row) */}
-            <div className="sm:hidden flex items-center justify-between gap-2 mb-2 z-20">
-              {/* زر رابط الاستمارة المباشر - أيقونة فقط في الجوال + زر التحديث */}
+            {/* Mobile & Tablet Top Controls Bar: Form Link + Language Flags + Close (3 Controls in 1 Row) */}
+            <div className="lg:hidden flex items-center justify-between gap-2 mb-2.5 z-20">
+              {/* زر رابط الاستمارة المباشر + زر التحديث */}
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -1647,47 +1670,50 @@ export default function RegistrationModal({
                 </button>
               </div>
 
-              {/* أزرار اللغة - علامات اللغة فقط بدون نصوص في الجوال */}
+              {/* أزرار اللغة المدمجة للجوال والتابلت */}
               <div className="flex items-center gap-1 p-0.5 bg-slate-950/80 border border-slate-800 rounded-xl shadow-inner">
                 <button
                   type="button"
                   onClick={() => setFormLang("ar")}
                   title="العربية"
-                  className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                     formLang === "ar"
                       ? "bg-amber-500 text-slate-950 shadow-md font-black"
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <span className="text-sm">🇸🇦</span>
+                  <span className="hidden sm:inline mr-1 text-[11px] font-sans">عربي</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormLang("en")}
                   title="English"
-                  className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                     formLang === "en"
                       ? "bg-amber-500 text-slate-950 shadow-md font-black"
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <span className="text-sm">🇬🇧</span>
+                  <span className="hidden sm:inline ml-1 text-[11px] font-sans">EN</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setFormLang("th")}
                   title="ภาษาไทย"
-                  className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                     formLang === "th"
                       ? "bg-amber-500 text-slate-950 shadow-md font-black"
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
                   <span className="text-sm">🇹🇭</span>
+                  <span className="hidden sm:inline ml-1 text-[11px] font-sans">TH</span>
                 </button>
               </div>
 
-              {/* زر الإغلاق في الجوال */}
+              {/* زر الإغلاق */}
               <button
                 type="button"
                 onClick={onClose}
@@ -1697,9 +1723,9 @@ export default function RegistrationModal({
               </button>
             </div>
 
-            {/* Desktop Action Buttons: Copy Direct Link, Refresh, and Close */}
+            {/* Desktop Only Action Buttons: Copy Direct Link, Refresh, and Close */}
             <div
-              className={`hidden sm:flex absolute top-4 sm:top-5 ${
+              className={`hidden lg:flex absolute top-4 sm:top-5 ${
                 formLang === "ar" ? "left-4 sm:left-5" : "right-4 sm:right-5"
               } items-center gap-1.5 sm:gap-2 z-20`}
             >
@@ -1738,9 +1764,9 @@ export default function RegistrationModal({
             </div>
 
             {/* Modal Header */}
-            <div className="text-center pt-1 sm:pt-2 pb-2.5 sm:pb-3.5 border-b border-slate-800 shrink-0">
-              {/* الأيقونة العلوية فوق النص - مخفية في الجوال وظاهرة في الكمبيوتر */}
-              <div className="hidden sm:flex w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/10 text-amber-400 rounded-2xl items-center justify-center mx-auto mb-2 border border-amber-500/20 shadow-sm">
+            <div className="text-center pt-0.5 sm:pt-1.5 pb-2 sm:pb-3 border-b border-slate-800 shrink-0">
+              {/* الأيقونة العلوية فوق النص - تظهر فقط في الشاشات المكتبية الكبيرة لتوفير المساحة في التابلت والجوال */}
+              <div className="hidden lg:flex w-10 h-10 sm:w-12 sm:h-12 bg-amber-500/10 text-amber-400 rounded-2xl items-center justify-center mx-auto mb-2 border border-amber-500/20 shadow-sm">
                 <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <h3 className="font-serif font-black text-lg sm:text-2xl md:text-3xl text-amber-400">
@@ -1751,7 +1777,7 @@ export default function RegistrationModal({
               </p>
 
               {/* Language Switcher Tabs (Desktop only) */}
-              <div className="hidden sm:flex mt-2.5 sm:mt-3 items-center justify-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl w-fit mx-auto shadow-inner">
+              <div className="hidden lg:flex mt-2.5 sm:mt-3 items-center justify-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl w-fit mx-auto shadow-inner">
                 <button
                   type="button"
                   onClick={() => setFormLang("ar")}
@@ -1805,7 +1831,7 @@ export default function RegistrationModal({
             >
               {isSuccess ? (
                 /* SUCCESS VIEW */
-                <div className="text-center py-4 px-2 sm:px-4 space-y-4">
+                <div id="registration-success-header" className="text-center py-4 px-2 sm:px-4 space-y-4">
                   <div className="w-14 h-14 sm:w-16 sm:h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 shadow-lg">
                     <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9" />
                   </div>

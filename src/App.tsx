@@ -603,23 +603,74 @@ export default function App() {
         document.cookie = `thnoon_device_id=${encodeURIComponent(fingerprint)}; path=/; max-age=315360000; SameSite=Lax`;
       } catch (e) {}
 
-      // Check geo permission (optional coordinates)
+      // 1. Precise device, tablet, mobile, and browser identification
+      const userAgent = navigator.userAgent || "";
+      const isIPad = /iPad/i.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isAndroidTablet = /Android/i.test(userAgent) && !/Mobile/i.test(userAgent);
+      const isTablet = isIPad || isAndroidTablet || (Math.min(window.screen.width, window.screen.height) >= 600 && Math.max(window.screen.width, window.screen.height) >= 900 && 'ontouchstart' in window);
+      const isMobilePhone = !isTablet && /iPhone|iPod|Android.*Mobile|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      let deviceCategory = "كمبيوتر مكتبي / لابتوب";
+      if (isTablet) {
+        deviceCategory = isIPad ? "جهاز لوحي (iPad)" : "جهاز لوحي (Tablet)";
+      } else if (isMobilePhone) {
+        deviceCategory = /iPhone/i.test(userAgent) ? "هاتف جوال (iPhone)" : "هاتف جوال (Android)";
+      }
+
+      let browserName = "متصفح الويب";
+      if (/Chrome/i.test(userAgent) && !/Edg/i.test(userAgent) && !/OPR/i.test(userAgent)) browserName = "Google Chrome";
+      else if (/Safari/i.test(userAgent) && !/Chrome/i.test(userAgent)) browserName = "Apple Safari";
+      else if (/Edg/i.test(userAgent)) browserName = "Microsoft Edge";
+      else if (/Firefox/i.test(userAgent)) browserName = "Mozilla Firefox";
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const screenRes = `${window.screen.width}x${window.screen.height}`;
+      const fullDeviceInfo = `${deviceCategory} [${browserName}] - دقة: ${screenRes}`;
+
+      // 2. Check geo permission (GPS coordinates)
       let coords: { latitude: number; longitude: number } | null = null;
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 4000 });
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 3500,
+            maximumAge: 60000
+          });
         });
         coords = pos.coords;
       } catch (e) {
         console.log("Geolocation omitted or rejected");
       }
 
-      // Device and browser identification
-      const userAgent = navigator.userAgent || "";
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
-      const browserInfo = isMobile ? "هاتف محمول / جوال" : "كمبيوتر / متصفح مكتبي";
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      const fullDeviceInfo = `${browserInfo} (${navigator.platform || "Platform"}) - ${timezone}`;
+      // 3. Smart Location Name synthesis (City/Country mapping based on Timezone or GPS)
+      let resolvedLocation = "";
+      if (coords && coords.latitude && coords.longitude) {
+        resolvedLocation = `إحداثيات: ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+      }
+      
+      const tzMap: Record<string, string> = {
+        "Asia/Riyadh": "السعودية (الرياض)",
+        "Asia/Kuwait": "الكويت",
+        "Asia/Dubai": "الإمارات (دبي)",
+        "Asia/Muscat": "عُمان (مسقط)",
+        "Asia/Qatar": "قطر (الدوحة)",
+        "Asia/Bahrain": "البحرين (المنامة)",
+        "Asia/Baghdad": "العراق (بغداد)",
+        "Asia/Amman": "الأردن (عمان)",
+        "Africa/Cairo": "مصر (القاهرة)",
+        "Asia/Bangkok": "تايلاند (بانكوك)",
+        "Asia/Kuala_Lumpur": "ماليزيا (كوالالمبور)",
+        "Asia/Jakarta": "إندونيسيا (جاكرتا)",
+        "Europe/London": "المملكة المتحدة (لندن)",
+        "Europe/Istanbul": "تركيا (إسطنبول)"
+      };
+
+      const friendlyTz = tzMap[timezone] || (timezone ? timezone.replace(/_/g, " ") : "");
+      if (resolvedLocation) {
+        resolvedLocation = friendlyTz ? `${friendlyTz} | ${resolvedLocation}` : resolvedLocation;
+      } else {
+        resolvedLocation = friendlyTz ? `المنطقة: ${friendlyTz}` : (timezone ? `منطقة: ${timezone}` : "غير محدد بدقة");
+      }
 
       // Universal login execution through GoogleBackendBridge (Works on AI Studio, Vercel, and GitHub Pages)
       const data = await loginSubscriberBridge(
@@ -629,7 +680,7 @@ export default function App() {
         {
           lat: coords?.latitude || null,
           lng: coords?.longitude || null,
-          locationName: timezone ? `منطقة: ${timezone}` : "",
+          locationName: resolvedLocation,
           deviceInfo: fullDeviceInfo
         }
       );

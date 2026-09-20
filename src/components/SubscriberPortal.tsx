@@ -140,9 +140,9 @@ export default function SubscriberPortal({
             >
               <div className="absolute top-0 right-0 left-0 h-1.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600"></div>
 
-              {/* Mobile Top Controls Bar: Portal Link + Language Flags + Close (3 Controls in 1 Row) */}
-              <div className="sm:hidden flex items-center justify-between gap-2 mb-3.5 z-20">
-                {/* زر رابط البوابة - أيقونة فقط في الجوال */}
+              {/* Mobile & Tablet Top Controls Bar: Portal Link + Language Flags + Close (3 Controls in 1 Row) */}
+              <div className="lg:hidden flex items-center justify-between gap-2 mb-3.5 z-20">
+                {/* زر رابط البوابة */}
                 <button
                   type="button"
                   onClick={handleCopyPortalLink}
@@ -156,47 +156,50 @@ export default function SubscriberPortal({
                   )}
                 </button>
 
-                {/* أزرار اللغة - علامات اللغة فقط بدون نصوص في الجوال */}
+                {/* أزرار اللغة المدمجة للجوال والتابلت */}
                 <div className="flex items-center gap-1 p-0.5 bg-slate-950/80 border border-slate-800 rounded-xl shadow-inner">
                   <button
                     type="button"
                     onClick={() => setLanguage("ar")}
                     title="العربية"
-                    className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                       currentLang === "ar"
                         ? "bg-amber-500 text-slate-950 shadow-md font-black"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <span className="text-sm">🇸🇦</span>
+                    <span className="hidden sm:inline mr-1 text-[11px] font-sans">عربي</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setLanguage("en")}
                     title="English"
-                    className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                       currentLang === "en"
                         ? "bg-amber-500 text-slate-950 shadow-md font-black"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <span className="text-sm">🇬🇧</span>
+                    <span className="hidden sm:inline ml-1 text-[11px] font-sans">EN</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setLanguage("th")}
                     title="ภาษาไทย"
-                    className={`px-2 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
                       currentLang === "th"
                         ? "bg-amber-500 text-slate-950 shadow-md font-black"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <span className="text-sm">🇹🇭</span>
+                    <span className="hidden sm:inline ml-1 text-[11px] font-sans">TH</span>
                   </button>
                 </div>
 
-                {/* زر الإغلاق في الجوال */}
+                {/* زر الإغلاق */}
                 <button
                   type="button"
                   onClick={onClose}
@@ -206,8 +209,8 @@ export default function SubscriberPortal({
                 </button>
               </div>
 
-              {/* Desktop Top Controls: Share & Close */}
-              <div className={`hidden sm:flex absolute top-4 ${dir === "rtl" ? "left-4" : "right-4"} items-center gap-1.5 z-20`}>
+              {/* Desktop Only Top Controls: Share & Close */}
+              <div className={`hidden lg:flex absolute top-4 ${dir === "rtl" ? "left-4" : "right-4"} items-center gap-1.5 z-20`}>
                 <button
                   type="button"
                   onClick={handleCopyPortalLink}
@@ -229,20 +232,20 @@ export default function SubscriberPortal({
               </div>
 
               {/* Title Header */}
-              <div className="text-center mt-1 sm:mt-2 mb-3 sm:mb-4">
-                {/* الأيقونة العلوية فوق النص - مخفية في الجوال وظاهرة في الكمبيوتر */}
-                <div className="hidden sm:flex w-12 h-12 bg-amber-500/10 text-amber-400 rounded-2xl items-center justify-center mx-auto mb-2.5">
+              <div className="text-center mt-0.5 sm:mt-1.5 mb-3 sm:mb-4">
+                {/* الأيقونة العلوية تظهر فقط في الشاشات المكتبية الكبيرة لتوفير المساحة الرأسية في الجوال والتابلت */}
+                <div className="hidden lg:flex w-12 h-12 bg-amber-500/10 text-amber-400 rounded-2xl items-center justify-center mx-auto mb-2.5">
                   <User className="w-6 h-6" />
                 </div>
                 <h3 className="font-serif font-bold text-xl sm:text-2xl text-amber-400">
                   {t("subscriber_login_title", "تسجيل دخول بوابة المشتركين")}
                 </h3>
-                <p className="text-slate-400 font-sans text-[11px] sm:text-xs mt-1 leading-relaxed">
+                <p className="text-slate-400 font-sans text-[11px] sm:text-xs mt-1 leading-relaxed max-w-sm sm:max-w-md mx-auto">
                   {t("subscriber_login_subtitle", "أدخل رقم التسجيل الخاص بك أو امسح رمز الاستجابة السريعة (QR Code) للوصول المباشر إلى موادك الخاصة")}
                 </p>
 
-                {/* Multilingual Selector Pills for Portal (ظاهرة فقط في الشاشات الكبيرة) */}
-                <div className="hidden sm:flex mt-3 items-center justify-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl w-fit mx-auto shadow-inner">
+                {/* Multilingual Selector Pills for Portal (ظاهرة فقط في الديسكتوب الكبير) */}
+                <div className="hidden lg:flex mt-3 items-center justify-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-2xl w-fit mx-auto shadow-inner">
                   <button
                     type="button"
                     onClick={() => setLanguage("ar")}

@@ -1401,7 +1401,71 @@ export async function loginSubscriberBridge(
     // Expected on static hosting (Vercel / GitHub Pages)
   }
 
-  // 2. Direct Google Visualization API Sheets reader (Instant, client-side, 100% reliable on Vercel & Mobile)
+  // 2. Direct Google Apps Script Web App (Primary for Vercel, Mobile, and Tablet)
+  // Guarantees immediate device registration, GPS/Location logging, and device limit enforcement in Google Sheets.
+  if (targetScriptUrl && targetScriptUrl.startsWith("http")) {
+    // 2.A Direct GET
+    try {
+      const params = new URLSearchParams({
+        action: "loginUser",
+        username: cleanUser,
+        password: cleanPass,
+        deviceId: currentDeviceId,
+        lat: extra?.lat ? String(extra.lat) : "",
+        lng: extra?.lng ? String(extra.lng) : "",
+        locationName: extra?.locationName || "",
+        deviceInfo: extra?.deviceInfo || "",
+        _cb: String(Date.now())
+      });
+
+      const gasGetUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}${params.toString()}`;
+      const gasRes = await fetch(gasGetUrl, { cache: "no-store" });
+      if (gasRes.ok) {
+        const gasData = await gasRes.json();
+        if (gasData && gasData.success === true) {
+          if (!gasData.content || !gasData.content.cards || gasData.content.cards.length === 0) {
+            const directContent = await fetchSubscriberTopicContent(gasData.topicId || "1", targetSpreadsheetId);
+            if (directContent) gasData.content = directContent;
+          }
+          return gasData;
+        }
+        // Strict limit enforcement or administrative account block
+        if (gasData && (gasData.isBlocked || gasData.deviceLimitReached)) {
+          return gasData;
+        }
+      }
+    } catch (gasGetErr) {
+      console.warn("Direct Apps Script GET login note:", gasGetErr);
+    }
+
+    // 2.B Direct POST
+    try {
+      const postRes = await executeAppsScriptPost("loginUser", {
+        username: cleanUser,
+        password: cleanPass,
+        deviceId: currentDeviceId,
+        lat: extra?.lat || null,
+        lng: extra?.lng || null,
+        locationName: extra?.locationName || "",
+        deviceInfo: extra?.deviceInfo || ""
+      }, targetScriptUrl);
+
+      if (postRes.success && postRes.data && postRes.data.success === true) {
+        if (!postRes.data.content || !postRes.data.content.cards || postRes.data.content.cards.length === 0) {
+          const directContent = await fetchSubscriberTopicContent(postRes.data.topicId || "1", targetSpreadsheetId);
+          if (directContent) postRes.data.content = directContent;
+        }
+        return postRes.data;
+      }
+      if (postRes.success && postRes.data && (postRes.data.isBlocked || postRes.data.deviceLimitReached)) {
+        return postRes.data;
+      }
+    } catch (gasPostErr) {
+      console.warn("Direct Apps Script POST login note:", gasPostErr);
+    }
+  }
+
+  // 3. Fallback: Direct Google Visualization API Sheets reader (Instant, client-side, 100% reliable on Vercel & Mobile)
   const candidateSheets = ["Settings", "الإعدادات", "RegistrationAnswers", "ردود التسجيل"];
   for (const sheetName of candidateSheets) {
     try {
@@ -1606,64 +1670,6 @@ export async function loginSubscriberBridge(
     } catch (gvizTabErr) {
       console.warn(`GVIZ sheet check for ${sheetName} note:`, gvizTabErr);
     }
-  }
-
-  // 3. Direct Apps Script Web App GET Request
-  try {
-    const params = new URLSearchParams({
-      action: "loginUser",
-      username: cleanUser,
-      password: cleanPass,
-      deviceId: currentDeviceId,
-      lat: extra?.lat ? String(extra.lat) : "",
-      lng: extra?.lng ? String(extra.lng) : "",
-      locationName: extra?.locationName || "",
-      deviceInfo: extra?.deviceInfo || ""
-    });
-
-    const gasGetUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}${params.toString()}`;
-    const gasRes = await fetch(gasGetUrl);
-    if (gasRes.ok) {
-      const gasData = await gasRes.json();
-      if (gasData && gasData.success === true) {
-        if (!gasData.content || !gasData.content.cards || gasData.content.cards.length === 0) {
-          const directContent = await fetchSubscriberTopicContent(gasData.topicId || "1", targetSpreadsheetId);
-          if (directContent) gasData.content = directContent;
-        }
-        return gasData;
-      }
-      if (gasData && (gasData.isBlocked || gasData.deviceLimitReached)) {
-        return gasData;
-      }
-    }
-  } catch (gasErr) {
-    console.warn("Direct Apps Script GET login failed, trying direct POST...", gasErr);
-  }
-
-  // 4. Direct Apps Script POST (with text/plain)
-  try {
-    const postRes = await executeAppsScriptPost("loginUser", {
-      username: cleanUser,
-      password: cleanPass,
-      deviceId: currentDeviceId,
-      lat: extra?.lat || null,
-      lng: extra?.lng || null,
-      locationName: extra?.locationName || "",
-      deviceInfo: extra?.deviceInfo || ""
-    }, targetScriptUrl);
-
-    if (postRes.success && postRes.data && postRes.data.success === true) {
-      if (!postRes.data.content || !postRes.data.content.cards || postRes.data.content.cards.length === 0) {
-        const directContent = await fetchSubscriberTopicContent(postRes.data.topicId || "1", targetSpreadsheetId);
-        if (directContent) postRes.data.content = directContent;
-      }
-      return postRes.data;
-    }
-    if (postRes.success && postRes.data && (postRes.data.isBlocked || postRes.data.deviceLimitReached)) {
-      return postRes.data;
-    }
-  } catch (postErr) {
-    console.warn("Direct Apps Script POST login failed:", postErr);
   }
 
   return {
