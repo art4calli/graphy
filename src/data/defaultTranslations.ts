@@ -937,6 +937,24 @@ export const DEFAULT_SITE_TRANSLATIONS: TranslationItem[] = [
     th: "คุณกำลังลงทะเบียนนักเรียนใหม่ที่เป็นคนในครอบครัวเดียวกันภายใต้บัญชีสมาชิกหลัก ({primaryName})",
     en: "You are registering a new independent student under primary subscriber account ({primaryName})."
   },
+  {
+    id: "reg_already_registered_success_sibling_btn",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "زر تسجيل طالب آخر من نفس العائلة بعد النجاح",
+    ar: "تسجيل طالب آخر من العائلة (تسجيل الإخوان 👨‍👩‍👧‍👦)",
+    th: "ลงทะเบียนสมาชิกครอบครัวคนอื่น (ลงทะเบียนพี่น้อง 👨‍👩‍👧‍👦)",
+    en: "Register Another Family Member (Sibling Registration 👨‍👩‍👧‍👦)"
+  },
+  {
+    id: "subscriber_add_sibling_tooltip",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "تلميح زر إضافة مشترك عائلي (➕)",
+    ar: "تسجيل طالب آخر من العائلة (أخ / فرد من العائلة)",
+    th: "ลงทะเบียนสมาชิกครอบครัวคนอื่น (พี่น้อง / สมาชิกในครอบครัว)",
+    en: "Register another family member (sibling / family)"
+  },
 
   // -------------------------------------------------------------
   // 10. بوابة المشتركين (Subscriber Portal)

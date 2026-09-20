@@ -163,7 +163,18 @@ function doGet(e) {
 // 2. استقبال طلبات POST (تسجيل الدخول، إرسال الاستفسارات، وتعبئة نموذج التسجيل)
 function doPost(e) {
   try {
-    var postData = JSON.parse(e.postData.contents);
+    var rawContents = (e && e.postData && e.postData.contents) ? e.postData.contents.toString().trim() : "";
+    if (rawContents.endsWith("=")) {
+      rawContents = rawContents.substring(0, rawContents.length - 1).trim();
+    }
+    var postData = {};
+    try {
+      postData = JSON.parse(rawContents);
+    } catch(pErr) {
+      if (e && e.parameter && e.parameter.action) {
+        postData = e.parameter;
+      }
+    }
     var action = postData.action;
 
     // أ) تسجيل دخول المشترك
@@ -504,6 +515,16 @@ function submitRegistration(data) {
 
     var displayName = data.name || data.nameArabic || "مشترك جديد";
 
+    // تحديد هل هذا قيد إضافي / عائلي / تابع على مستوى دالة التسجيل بالكامل
+    var isSibReg = Boolean(
+      data.isSibling === true ||
+      data.isSibling === "true" ||
+      (data.registrationType && data.registrationType.toString().indexOf("إضافي") !== -1) ||
+      data.registrationType === "sibling" ||
+      data.siblingParentName ||
+      data.siblingParentId
+    );
+
     // 3. قراءة أسئلة الفورم من ورقة RegistrationQuestions لتحديد ترتيب الأعمدة بدقة
     var questionsSheet = ss.getSheetByName("RegistrationQuestions") || ss.getSheetByName("أسئلة التسجيل");
     var formQuestionsList = [];
@@ -634,9 +655,19 @@ function submitRegistration(data) {
       var isArNameB = normB.indexOf("اسمبالعربي") !== -1 || normB.indexOf("arabicname") !== -1;
       if (isArNameA && isArNameB) return true;
 
-      // فئة البريد الإلكتروني
-      var isEmailA = normA.indexOf("ايميل") !== -1 || normA.indexOf("بريد") !== -1 || normA.indexOf("email") !== -1 || normA.indexOf("mail") !== -1 || normA.indexOf("อีเมล") !== -1;
-      var isEmailB = normB.indexOf("ايميل") !== -1 || normB.indexOf("بريد") !== -1 || normB.indexOf("email") !== -1 || normB.indexOf("mail") !== -1 || normB.indexOf("อีเมล") !== -1;
+      // فحص هل يحتوي الحقل على كلمات دالة على حالة الإرسال والتأكيد
+      var isStatusWordA = normA.indexOf("حاله") !== -1 || normA.indexOf("ارسال") !== -1 || normA.indexOf("status") !== -1 || normA.indexOf("تاكيد") !== -1;
+      var isStatusWordB = normB.indexOf("حاله") !== -1 || normB.indexOf("ارسال") !== -1 || normB.indexOf("status") !== -1 || normB.indexOf("تاكيد") !== -1;
+
+      // فئة حالة وتأكيد الإرسال (تطابق فقط إن كان الطرفان دالين على حالة الإرسال)
+      var isStatusColA = isStatusWordA && (normA.indexOf("ايميل") !== -1 || normA.indexOf("mail") !== -1 || normA.indexOf("حاله") !== -1 || normA.indexOf("ارسال") !== -1 || normA.indexOf("status") !== -1);
+      var isStatusColB = isStatusWordB && (normB.indexOf("ايميل") !== -1 || normB.indexOf("mail") !== -1 || normB.indexOf("حاله") !== -1 || normB.indexOf("ارسال") !== -1 || normB.indexOf("status") !== -1);
+      if (isStatusColA && isStatusColB) return true;
+      if (isStatusColA || isStatusColB) return false;
+
+      // فئة البريد الإلكتروني الخاص بالمشترك (مستثنى منه تماماً أي عامود خاص بحالة الإرسال)
+      var isEmailA = !isStatusWordA && (normA.indexOf("ايميل") !== -1 || normA.indexOf("بريد") !== -1 || normA.indexOf("email") !== -1 || normA.indexOf("mail") !== -1 || normA.indexOf("อีเมล") !== -1);
+      var isEmailB = !isStatusWordB && (normB.indexOf("ايميل") !== -1 || normB.indexOf("بريد") !== -1 || normB.indexOf("email") !== -1 || normB.indexOf("mail") !== -1 || normB.indexOf("อีเมล") !== -1);
       if (isEmailA && isEmailB) return true;
 
       // فئة QR Code
@@ -678,9 +709,15 @@ function submitRegistration(data) {
       var isTimeB = normB.indexOf("تاريخ") !== -1 || normB.indexOf("وقت") !== -1 || normB.indexOf("time") !== -1 || normB.indexOf("date") !== -1;
       if (isTimeA && isTimeB) return true;
 
+      // فئة نوع القيد والاشتراك العائلي
+      var isSibA = normA.indexOf("نوعالقيد") !== -1 || normA.indexOf("نوعالاشتراك") !== -1 || normA.indexOf("صفهالقيد") !== -1 || normA.indexOf("عائلي") !== -1 || normA.indexOf("اخ") !== -1 || normA.indexOf("عائله") !== -1;
+      var isSibB = normB.indexOf("نوعالقيد") !== -1 || normB.indexOf("نوعالاشتراك") !== -1 || normB.indexOf("صفهالقيد") !== -1 || normB.indexOf("عائلي") !== -1 || normB.indexOf("اخ") !== -1 || normB.indexOf("عائله") !== -1;
+      if (isSibA && isSibB) return true;
+      if (isSibA || isSibB) return false;
+
       // فئة رقم التسجيل
-      var isIdA = normA.indexOf("تسجيل") !== -1 || normA.indexOf("قيد") !== -1 || normA.indexOf("regid") !== -1;
-      var isIdB = normB.indexOf("تسجيل") !== -1 || normB.indexOf("قيد") !== -1 || normB.indexOf("regid") !== -1;
+      var isIdA = (normA.indexOf("تسجيل") !== -1 || normA.indexOf("قيد") !== -1 || normA.indexOf("regid") !== -1) && normA.indexOf("نوع") === -1 && normA.indexOf("صفه") === -1;
+      var isIdB = (normB.indexOf("تسجيل") !== -1 || normB.indexOf("قيد") !== -1 || normB.indexOf("regid") !== -1) && normB.indexOf("نوع") === -1 && normB.indexOf("صفه") === -1;
       if (isIdA && isIdB && normA.indexOf("line") === -1 && normB.indexOf("line") === -1) return true;
 
       // فئة حالة وتأكيد الإرسال
@@ -798,10 +835,18 @@ function submitRegistration(data) {
       if (isSameFieldCategory(cleanHeader, "رقم التسجيل")) {
         return registrationId;
       }
-      if (isSameFieldCategory(cleanHeader, "QR Code")) {
+      if (isSameFieldCategory(cleanHeader, "نوع القيد") || isSameFieldCategory(cleanHeader, "نوع الاشتراك") || isSameFieldCategory(cleanHeader, "صفة القيد") || cleanHeader.indexOf("نوع القيد") !== -1 || cleanHeader.indexOf("عائلي") !== -1) {
+        if (isSibReg) {
+          var parentRef = data.siblingParentName || data.siblingParentId || "الحساب الأساسي";
+          return "مشترك إضافي (عائلي / أخ) - تابع للمشترك الأساسي: " + parentRef;
+        } else {
+          return "مشترك أساسي";
+        }
+      }
+      if (isSameFieldCategory(cleanHeader, "QR Code") || cleanHeader.indexOf("QR") !== -1 || cleanHeader.indexOf("باركود") !== -1) {
         return ""; // يترك فارغاً ليتم تعبئته لاحقاً برابط الـ QR
       }
-      if (isSameFieldCategory(cleanHeader, "تأكيد الإرسال")) {
+      if (isSameFieldCategory(cleanHeader, "تأكيد الإرسال") || cleanHeader.indexOf("حالة إرسال") !== -1 || cleanHeader.indexOf("Email Status") !== -1 || cleanHeader.indexOf("حالة الإرسال") !== -1 || cleanHeader.indexOf("تاكيد الارسال") !== -1) {
         return ""; // يترك فارغاً ليتم تعبئته بعد إرسال الإيميل
       }
 
@@ -827,6 +872,26 @@ function submitRegistration(data) {
       }
 
       return "";
+    }
+
+    // التأكد من وجود عامود 'نوع القيد والاشتراك' في ورقة RegistrationAnswers
+    var hasSiblingCol = false;
+    for (var chkH = 0; chkH < currentHeaders.length; chkH++) {
+      var hTitle = (currentHeaders[chkH] || "").toString().trim();
+      if (hTitle.indexOf("نوع القيد") !== -1 || hTitle.indexOf("نوع الاشتراك") !== -1 || hTitle.indexOf("صفة القيد") !== -1) {
+        hasSiblingCol = true;
+        break;
+      }
+    }
+    if (!hasSiblingCol) {
+      var nextSiblingCol = currentHeaders.length + 1;
+      sheet.getRange(1, nextSiblingCol)
+           .setValue("نوع القيد والاشتراك")
+           .setFontWeight("bold")
+           .setBackground("#7C3AED")
+           .setFontColor("#FFFFFF")
+           .setHorizontalAlignment("center");
+      currentHeaders.push("نوع القيد والاشتراك");
     }
 
     // بناء صف الإجابات بما يطابق الأعمدة بدقة 100%
@@ -856,6 +921,13 @@ function submitRegistration(data) {
       sheet.getRange(lastRow, 1, 1, rowValues.length).setVerticalAlignment("middle");
       sheet.getRange(lastRow, 1).setHorizontalAlignment("center");
       sheet.getRange(lastRow, 2).setHorizontalAlignment("center").setFontWeight("bold");
+
+      // تمييز المشترك الإضافي العائلي بلون مميز في ورقة RegistrationAnswers
+      if (isSibReg) {
+        try {
+          sheet.getRange(lastRow, 1, 1, rowValues.length).setBackground("#F5F3FF");
+        } catch(eSibColor) {}
+      }
     }
 
     // 9. التأكد من وجود أعمدة الـ QR Code وحالة الإرسال وتنسيقها بدقة تامة ومنع تكرار الأعمدة
@@ -935,8 +1007,13 @@ function submitRegistration(data) {
 
     // 10. المزامنة التلقائية لبيانات المشترك في ورقة Settings (A + B + Z:AC)
     try {
-      var settingsSheet = ss.getSheetByName("Settings");
+      var settingsSheet = ss.getSheetByName("Settings") || ss.getSheetByName("الإعدادات") || ss.getSheetByName("اعدادات");
       if (settingsSheet) {
+        // التأكد من توفر الأعمدة الكافية حتى AW (49 عاموداً) أولاً قبل أي عملية قراءة أو كتابة
+        if (settingsSheet.getMaxColumns() < 49) {
+          settingsSheet.insertColumnsAfter(settingsSheet.getMaxColumns(), 49 - settingsSheet.getMaxColumns() + 2);
+        }
+
         var sLastRow = settingsSheet.getLastRow();
         var targetSettingsRow = -1;
         
@@ -960,11 +1037,6 @@ function submitRegistration(data) {
           }
         }
 
-        // التأكد من توفر الأعمدة الكافية حتى AW (49 عاموداً)
-        if (settingsSheet.getMaxColumns() < 49) {
-          settingsSheet.insertColumnsAfter(settingsSheet.getMaxColumns(), 49 - settingsSheet.getMaxColumns() + 2);
-        }
-
         // تسجيل البيانات المطلوبة بدقة:
         // 0. رقم الموضوع في العامود A (العمود 1) ليكون 1 افتراضياً لكل مشترك جديد
         var requestedTopic = (data.topicId !== undefined && data.topicId !== null) ? data.topicId : (data.topic || 1);
@@ -986,10 +1058,41 @@ function submitRegistration(data) {
           curSubStatus = "قيد المراجعة";
           settingsSheet.getRange(targetSettingsRow, 3).setValue(curSubStatus);
         }
+
+        // 4. ترويسة العامود D (العمود 4): نوع القيد / ملاحظات
+        try {
+          var colDHeader = settingsSheet.getRange(1, 4).getValue();
+          if (!colDHeader) {
+            settingsSheet.getRange(1, 4).setValue("نوع القيد والملاحظات").setFontWeight("bold").setBackground("#E0E7FF").setHorizontalAlignment("center");
+          }
+        } catch(eDHead) {}
+
+        var isSiblingRegistration = Boolean(
+          data.isSibling === true ||
+          data.isSibling === "true" ||
+          (data.registrationType && data.registrationType.toString().indexOf("إضافي") !== -1) ||
+          data.registrationType === "sibling" ||
+          data.siblingParentName ||
+          data.siblingParentId
+        );
+        if (isSiblingRegistration) {
+          var parentText = data.siblingParentName || data.siblingParentId || "المشترك الأساسي";
+          var siblingDesc = "مشترك إضافي عائلي (تابع لـ: " + parentText + ")";
+          settingsSheet.getRange(targetSettingsRow, 4).setValue(siblingDesc);
+        } else {
+          var existingDVal = (settingsSheet.getRange(targetSettingsRow, 4).getValue() || "").toString().trim();
+          if (!existingDVal) {
+            settingsSheet.getRange(targetSettingsRow, 4).setValue("مشترك أساسي");
+          }
+        }
+
         try {
           var syncBg = "#ffffff";
           var syncFg = "#0f172a";
-          if (curSubStatus.indexOf("معتمد") !== -1 || curSubStatus.indexOf("نشط") !== -1) {
+          if (isSiblingRegistration) {
+            syncBg = "#EDE9FE"; // خزامى بنفسجي مميز للمشترك العائلي
+            syncFg = "#5B21B6";
+          } else if (curSubStatus.indexOf("معتمد") !== -1 || curSubStatus.indexOf("نشط") !== -1) {
             syncBg = "#d1fae5"; syncFg = "#065f46";
           } else if (curSubStatus.indexOf("متقدم") !== -1) {
             syncBg = "#dbeafe"; syncFg = "#1e40af";
@@ -999,6 +1102,9 @@ function submitRegistration(data) {
             syncBg = "#f1f5f9"; syncFg = "#475569";
           }
           settingsSheet.getRange(targetSettingsRow, 1, 1, 4).setBackground(syncBg).setFontColor(syncFg);
+          if (isSiblingRegistration) {
+            settingsSheet.getRange(targetSettingsRow, 4).setFontWeight("bold");
+          }
         } catch(eColor) {}
 
         // إذا كان العمود AB (حالة الاشتراك) فارغاً، نتركه أو نضعه مسموح افتراضياً
@@ -1739,7 +1845,22 @@ function sendCustomSubscriberEmail(sheet, rowIdx, data, rowValues, currentHeader
       mailPayload.inlineImages = inlineImagesMap;
     }
 
-    MailApp.sendEmail(mailPayload);
+    try {
+      MailApp.sendEmail(mailPayload);
+    } catch (mErr) {
+      Logger.log("MailApp primary send warning: " + mErr.message);
+      // محاولة الإرسال الاحتياطي الخفيف بدون مرفقات أو صور مضمنة في حال كان الخطأ بسبب حجم أو نوع المرفق
+      try {
+        MailApp.sendEmail({
+          to: recipientEmail,
+          subject: subject,
+          htmlBody: htmlBody
+        });
+      } catch (mErr2) {
+        Logger.log("MailApp fallback error: " + mErr2.message);
+        return { success: false, error: mErr2.message, recipient: recipientEmail };
+      }
+    }
 
     // تسجيل حالة "تم الإرسال" في العامود المخصص بالورقة دائماً
     var statusColIdxToSave = 0;
@@ -2024,13 +2145,18 @@ function loginUser(username, password, deviceId, lat, lng, locationName, deviceI
     if (!currentDeviceId) {
       currentDeviceId = "DEV-" + Utilities.formatDate(new Date(), "GMT+3", "yyyyMMddHHmmss") + "-" + Math.floor(Math.random() * 10000);
     }
-    var currentLocText = locationName || "";
-    if (!currentLocText && lat && lng) {
-      currentLocText = "إحداثيات: " + lat + ", " + lng;
+    var currentLocText = "";
+    if (locationName) {
+      currentLocText += locationName;
+    }
+    if (lat && lng) {
+      if (currentLocText) currentLocText += " | ";
+      currentLocText += "إحداثيات: " + lat + ", " + lng;
     }
     if (!currentLocText) {
-      currentLocText = Utilities.formatDate(new Date(), "GMT+3", "yyyy/MM/dd HH:mm");
+      currentLocText = "متصفح الويب";
     }
+    currentLocText += " (" + Utilities.formatDate(new Date(), "GMT+3", "yyyy/MM/dd HH:mm") + ")";
     var currentDevText = deviceInfo || currentDeviceId || "متصفح الويب";
 
     if (currentDeviceId) {
@@ -2466,6 +2592,20 @@ function sendTelegramNotificationToAdmin(data, rowValues, currentHeaders, custom
     msgLines.push("━━━━━━━━━━━━━━━━━━━━");
     msgLines.push("👤 <b>اسم المشترك:</b> " + escapeTelHtml(name));
     msgLines.push("🆔 <b>رقم التسجيل:</b> <code>" + escapeTelHtml(regId) + "</code>");
+    var isSiblingTel = Boolean(
+      data.isSibling === true ||
+      data.isSibling === "true" ||
+      (data.registrationType && data.registrationType.toString().indexOf("إضافي") !== -1) ||
+      data.registrationType === "sibling" ||
+      data.siblingParentName ||
+      data.siblingParentId
+    );
+    var parentNameTel = data.siblingParentName || data.siblingParentId || "";
+    if (isSiblingTel) {
+      msgLines.push("🏷️ <b>صفة القيد:</b> 👨‍👩‍👧‍👦 <b>مشترك إضافي عائلي (أخ / فرد من العائلة)</b>" + (parentNameTel ? " - تابع للمشترك الأساسي: <b>" + escapeTelHtml(parentNameTel) + "</b>" : ""));
+    } else {
+      msgLines.push("🏷️ <b>صفة القيد:</b> مشترك أساسي (تسجيل جديد)");
+    }
     if (phone) msgLines.push("📱 <b>الهاتف:</b> <code>" + escapeTelHtml(phone) + "</code>");
     if (email) msgLines.push("📧 <b>البريد:</b> " + escapeTelHtml(email));
     msgLines.push("⏰ <b>التاريخ والوقت:</b> " + escapeTelHtml(timestamp));
@@ -2985,7 +3125,7 @@ function getSettingsSubscribersData() {
     }
 
     var lastRow = sheet.getLastRow();
-    var lastCol = Math.max(sheet.getLastColumn(), 30);
+    var lastCol = Math.max(sheet.getLastColumn(), 49);
     if (lastRow < 2) {
       return { success: true, records: [], total: 0, message: "لا يوجد مشتركون في ورقة Settings" };
     }
@@ -2999,7 +3139,7 @@ function getSettingsSubscribersData() {
       var topicId = (r[0] !== null && r[0] !== undefined) ? r[0].toString().trim() : "1"; // Col A
       var nameB = (r[1] !== null && r[1] !== undefined) ? r[1].toString().trim() : "";    // Col B
       var subStatusRaw = (r[2] !== null && r[2] !== undefined) ? r[2].toString().trim() : ""; // Col C: حالة المشترك
-      var archiveTag = (r[3] !== null && r[3] !== undefined) ? r[3].toString().trim() : ""; // Col D: وسام الأرشيف
+      var archiveTag = (r[3] !== null && r[3] !== undefined) ? r[3].toString().trim() : ""; // Col D: وسام الأرشيف أو نوع القيد
       var nameZ = (r[25] !== null && r[25] !== undefined) ? r[25].toString().trim() : "";  // Col Z
       var regId = (r[26] !== null && r[26] !== undefined) ? r[26].toString().trim() : "";  // Col AA
       var status = (r[27] !== null && r[27] !== undefined) ? r[27].toString().trim() : "مسموح"; // Col AB: مسموح/ممنوع للدخول
@@ -3022,7 +3162,29 @@ function getSettingsSubscribersData() {
         }
       }
 
-      var isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.indexOf("مؤرشف") !== -1 || Boolean(archiveTag));
+      var isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.indexOf("مؤرشف") !== -1 || (Boolean(archiveTag) && archiveTag.indexOf("دفعة مؤرشفة") !== -1));
+
+      var siblingInfo = "";
+      if (archiveTag && (archiveTag.indexOf("إضافي") !== -1 || archiveTag.indexOf("عائلي") !== -1 || archiveTag.indexOf("تابع") !== -1)) {
+        siblingInfo = archiveTag;
+      }
+
+      // قراءة الأجهزة المسجلة من الأعمدة AD:AW
+      var registeredDevices = [];
+      var parsedMaxDev = parseInt(deviceCount, 10) || 1;
+      for (var devSlot = 0; devSlot < Math.min(parsedMaxDev, 10); devSlot++) {
+        var locIdx = 29 + (devSlot * 2); // Col 30 (AD), Col 32 (AF)...
+        var devIdx = 30 + (devSlot * 2); // Col 31 (AE), Col 33 (AG)...
+        var locVal = (r[locIdx] !== null && r[locIdx] !== undefined) ? r[locIdx].toString().trim() : "";
+        var devVal = (r[devIdx] !== null && r[devIdx] !== undefined) ? r[devIdx].toString().trim() : "";
+        if (devVal || locVal) {
+          registeredDevices.push({
+            slot: devSlot + 1,
+            device: devVal,
+            location: locVal
+          });
+        }
+      }
 
       records.push({
         rowIndex: i + 2,
@@ -3035,6 +3197,8 @@ function getSettingsSubscribersData() {
         subscriberStatus: finalSubStatus,
         isArchived: isArchived,
         archiveTag: archiveTag,
+        siblingInfo: siblingInfo,
+        devices: registeredDevices,
         rawRow: r.map(function(c) { return c !== null && c !== undefined ? c.toString().trim() : ""; })
       });
     }

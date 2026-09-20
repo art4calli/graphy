@@ -15,7 +15,7 @@ import { RegistrationQuestion, RegistrationAnswerRecord, SettingsSubscriberRecor
 import { formatImageUrl } from "./imageUtils";
 import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
 
-export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCJdOuMaG6tWW7wKtMj5xvvcYzDvczwZ43dQCIU7GgU9ip6aw9Igy4EkCHHqw2jAZOHw/exec";
+export const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxn8Q7W9DbAufsdZXx_57s7qf3hM2B4EeSugqDzWc13D62U28kvUkn9yZSwH2il5dBoQ/exec";
 export const DEFAULT_SPREADSHEET_ID = "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 export const DEFAULT_DRIVE_FOLDER_ID = "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
 
@@ -1339,7 +1339,7 @@ export async function loginSubscriberBridge(
   const currentDeviceId = (deviceId || "").toString().trim();
   const devShortId = currentDeviceId.length > 8 ? currentDeviceId.slice(-8) : currentDeviceId;
 
-  // 1. Try local server proxy if running with local backend (AI Studio dev container or custom server)
+  // 1. Try local server proxy if running with local backend (AI Studio dev container or custom server / Vercel Serverless)
   try {
     const res = await fetch("/api/login", {
       method: "POST",
@@ -1351,7 +1351,8 @@ export async function loginSubscriberBridge(
         lat: extra?.lat || null,
         lng: extra?.lng || null,
         locationName: extra?.locationName || "",
-        deviceInfo: extra?.deviceInfo || ""
+        deviceInfo: extra?.deviceInfo || "",
+        scriptUrl: targetScriptUrl
       })
     });
     if (res.ok) {
@@ -1377,7 +1378,7 @@ export async function loginSubscriberBridge(
               _cb: String(Date.now())
             });
             const syncGetUrl = `${targetScriptUrl}${targetScriptUrl.includes("?") ? "&" : "?"}${syncParams.toString()}`;
-            fetch(syncGetUrl, { mode: "no-cors" }).catch(() => {});
+            fetch(syncGetUrl, { mode: "no-cors", keepalive: true }).catch(() => {});
             executeAppsScriptPost("loginUser", {
               username: cleanUser,
               password: cleanPass,
@@ -1950,7 +1951,29 @@ export async function fetchSettingsSubscribersBridge(
               }
             }
 
-            const isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.includes("مؤرشف") || Boolean(archiveTag));
+            const isArchived = (finalSubStatus === "مؤرشف" || finalSubStatus === "أرشيف" || finalSubStatus.includes("مؤرشف") || (Boolean(archiveTag) && archiveTag.includes("دفعة مؤرشفة")));
+
+            let siblingInfo = "";
+            if (archiveTag && (archiveTag.includes("إضافي") || archiveTag.includes("عائلي") || archiveTag.includes("تابع"))) {
+              siblingInfo = archiveTag;
+            }
+
+            // Extract registered devices from cols AD:AW (indices 29:48)
+            const registeredDevices: Array<{ device: string; location: string; slot: number }> = [];
+            const maxDevLimit = parseInt(devCount, 10) || 1;
+            for (let d = 0; d < Math.min(maxDevLimit, 10); d++) {
+              const locCol = 29 + (d * 2);
+              const devCol = 30 + (d * 2);
+              const locVal = getVal(locCol);
+              const devVal = getVal(devCol);
+              if (devVal || locVal) {
+                registeredDevices.push({
+                  slot: d + 1,
+                  device: devVal,
+                  location: locVal
+                });
+              }
+            }
 
             records.push({
               rowIndex: rIdx + 2,
@@ -1963,6 +1986,8 @@ export async function fetchSettingsSubscribersBridge(
               subscriberStatus: finalSubStatus,
               isArchived,
               archiveTag,
+              siblingInfo,
+              devices: registeredDevices,
               rawRow: r.c.map((cell: any) => {
                 if (!cell || cell.v === null || cell.v === undefined) return "";
                 return cell.f !== undefined ? cell.f.toString().trim() : cell.v.toString().trim();

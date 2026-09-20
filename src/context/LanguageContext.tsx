@@ -59,6 +59,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               if (userSaved) {
                 return {
                   ...defItem,
+                  ar: userSaved.ar || defItem.ar,
                   th: userSaved.th || defItem.th,
                   en: userSaved.en || defItem.en,
                 };

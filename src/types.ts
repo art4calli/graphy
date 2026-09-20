@@ -306,7 +306,9 @@ export interface SettingsSubscriberRecord {
   deviceCount: string;         // العامود AC: عدد الأجهزة
   subscriberStatus?: SubscriberStageStatus | string; // العامود C: حالة المشترك (معتمد / متقدم / قيد المراجعة / مؤرشف)
   isArchived?: boolean;        // هل المشترك مؤرشف
-  archiveTag?: string;         // اسم دفعة الأرشيف وتاريخها
+  archiveTag?: string;         // اسم دفعة الأرشيف أو ملاحظات القيد العائلي
+  siblingInfo?: string;        // العامود D: بيانات المشترك الإضافي العائلي إن وُجد
+  devices?: Array<{ device: string; location: string; slot: number }>; // الأعمدة AD:AW الأجهزة والمواقع المسجلة
   rawRow?: string[];           // القيم الخام للصف
 }
 

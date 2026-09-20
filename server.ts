@@ -27,7 +27,7 @@ const configFile = path.join(dataDir, "config.json");
 const formTranslationsFile = path.join(dataDir, "form_translations.json");
 const siteTranslationsFile = path.join(dataDir, "site_translations.json");
 
-const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyCJdOuMaG6tWW7wKtMj5xvvcYzDvczwZ43dQCIU7GgU9ip6aw9Igy4EkCHHqw2jAZOHw/exec";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWeAga2dEJHr1JugVVqC8OfBdMlAHlmkzK3KZbo7yNmsmvYWv5YMddMLk8b6rqTGbfpQ/exec";
 let currentSpreadsheetId = process.env.SPREADSHEET_ID || "1MAurScyKTntcUUWAoB7Qt62vwvmEnDqmYNaB0DKo9tY";
 let currentScriptUrl = process.env.GOOGLE_SCRIPT_URL || process.env.VITE_GOOGLE_SCRIPT_URL || DEFAULT_SCRIPT_URL;
 let currentDriveFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID || "1tae6n3-tjB9vVtxr2GbK572SRtWxZ3f7";
@@ -1312,6 +1312,16 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ success: false, message: "الرجاء إدخال اسم المستخدم وكلمة المرور" });
   }
 
+  // Format rich location text with coordinates if available
+  let fullLocation = locationName || "";
+  if (lat && lng) {
+    if (fullLocation) fullLocation += " | ";
+    fullLocation += `إحداثيات: ${lat}, ${lng}`;
+  }
+  if (!fullLocation) {
+    fullLocation = "متصفح الويب";
+  }
+
   // If Google Apps Script Web App URL is configured, proxy to it for full read/write operations
   const scriptUrl = currentScriptUrl;
   if (scriptUrl && scriptUrl.trim().startsWith("http")) {
@@ -1329,7 +1339,7 @@ app.post("/api/login", async (req, res) => {
             deviceId,
             lat,
             lng,
-            locationName,
+            locationName: fullLocation,
             deviceInfo
           })
         });
@@ -1348,7 +1358,7 @@ app.post("/api/login", async (req, res) => {
             deviceId: String(deviceId || ""),
             lat: lat ? String(lat) : "",
             lng: lng ? String(lng) : "",
-            locationName: String(locationName || ""),
+            locationName: fullLocation,
             deviceInfo: String(deviceInfo || ""),
             _cb: String(Date.now())
           });
@@ -2620,6 +2630,20 @@ async function sendTelegramAdminNotification(config: any, regData: any, spreadsh
   message += `━━━━━━━━━━━━━━━━━━━━\n`;
   message += `👤 <b>اسم المشترك:</b> ${escapeTelegramHtml(name)}\n`;
   message += `🆔 <b>رقم التسجيل:</b> <code>${escapeTelegramHtml(regId)}</code>\n`;
+  const isSiblingTel = Boolean(
+    regData.isSibling === true ||
+    regData.isSibling === "true" ||
+    (regData.registrationType && String(regData.registrationType).includes("إضافي")) ||
+    regData.registrationType === "sibling" ||
+    regData.siblingParentName ||
+    regData.siblingParentId
+  );
+  const parentNameTel = regData.siblingParentName || regData.siblingParentId || "";
+  if (isSiblingTel) {
+    message += `🏷️ <b>صفة القيد:</b> 👨‍👩‍👧‍👦 <b>مشترك إضافي عائلي (أخ / فرد من العائلة)</b>${parentNameTel ? ` - تابع للمشترك الأساسي: <b>${escapeTelegramHtml(parentNameTel)}</b>` : ""}\n`;
+  } else {
+    message += `🏷️ <b>صفة القيد:</b> مشترك أساسي (تسجيل جديد)\n`;
+  }
   if (phone) {
     message += `📱 <b>الهاتف:</b> <code>${escapeTelegramHtml(phone)}</code>\n`;
   }
