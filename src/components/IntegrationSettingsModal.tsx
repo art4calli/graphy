@@ -13,7 +13,7 @@ import { DEFAULT_FORM_TRANSLATIONS } from "../data/defaultFormTranslations";
 import { getSavedFormQuestions, saveConfiguredFormQuestions } from "../data/configuredFormQuestions";
 import { fetchFormQuestionsBridge, DEFAULT_SPREADSHEET_ID } from "../utils/googleBackendBridge";
 
-const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWeAga2dEJHr1JugVVqC8OfBdMlAHlmkzK3KZbo7yNmsmvYWv5YMddMLk8b6rqTGbfpQ/exec";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwxn8Q7W9DbAufsdZXx_57s7qf3hM2B4EeSugqDzWc13D62U28kvUkn9yZSwH2il5dBoQ/exec";
 
 interface IntegrationSettingsModalProps {
   isOpen: boolean;
