@@ -33,7 +33,7 @@ import {
   ShieldCheck,
   HelpCircle
 } from "lucide-react";
-import { RegistrationQuestion, QuestionTranslation } from "../types";
+import { RegistrationQuestion, QuestionTranslation, SocialLinks } from "../types";
 import { DEFAULT_FORM_TRANSLATIONS } from "../data/defaultFormTranslations";
 import { getSavedFormQuestions, DEFAULT_CONFIGURED_QUESTIONS } from "../data/configuredFormQuestions";
 import { DEFAULT_SUBSCRIBER_EMAIL_CONFIG, DEFAULT_TELEGRAM_CONFIG } from "../data/defaultConfigs";
@@ -376,6 +376,7 @@ interface RegistrationModalProps {
   onOpenSubscriberPortal?: (data: { registrationId: string; name?: string }) => void;
   isSiblingMode?: boolean;
   primarySubscriber?: { id: string; name: string } | null;
+  socialLinks?: SocialLinks;
 }
 
 export default function RegistrationModal({
@@ -388,6 +389,7 @@ export default function RegistrationModal({
   onOpenSubscriberPortal,
   isSiblingMode = false,
   primarySubscriber = null,
+  socialLinks,
 }: RegistrationModalProps) {
   const [questions, setQuestions] = useState<RegistrationQuestion[]>(() => {
     if (propQuestions && propQuestions.length > 0) return propQuestions;
@@ -475,25 +477,31 @@ export default function RegistrationModal({
           localStorage.removeItem("thnoon_last_reg_timestamp");
         } catch (e) {}
         setExistingStudentAlert(null);
+        setIsRepeatedDevice(false);
+        setRegistrationId(generateRegistrationId());
+        try {
+          window.dispatchEvent(new CustomEvent("thnoon_subscriber_unlocked"));
+        } catch (e) {}
         setServerVerificationNotice({
           type: "success",
           text: getTrans("reg_server_verify_deleted", formLang === "en"
             ? "Verification completed: Your previous record was deleted by administration from Google Sheets. The form is now unlocked for a new registration."
             : formLang === "th"
             ? "ตรวจสอบสำเร็จ: บันทึกเดิมของคุณถูกลบจาก Google Sheets โดยผู้ดูแลระบบแล้ว แบบฟอร์มเปิดให้ลงทะเบียนใหม่ได้แล้ว"
-            : "تم التحقق بنجاح من Google Sheets: قامت الإدارة بحذف بياناتك السابقة. تم فك القفل ويمكنك الآن التسجيل من جديد كطالب جديد.")
+            : "تم التحقق بنجاح من Google Sheets: تم حذف قيدك السابق بالكامل من الشيت. تم فك القفل بنجاح، ويمكنك الآن تعبئة النموذج والتسجيل كطالب جديد فوراً.")
         });
       } else if (result.exists === true) {
         // Still exists in database
         const studentInfo = result.name || existingStudentAlert.name || existingStudentAlert.id;
+        const foundSheetName = result.foundIn ? `[${result.foundIn}]` : "";
         const foundTemplate = getTrans("reg_server_verify_found", formLang === "en"
-          ? `Verified with Google Sheets: Student ({id}) is still registered and active in the database. If you wish to register anew, please ask the admin to delete your entry first.`
+          ? `Verified with Google Sheets {sheet}: Student ({id}) is still registered and active in the database. If you wish to register anew, please ask the admin to delete your entry first.`
           : formLang === "th"
-          ? `ตรวจสอบกับ Google Sheets แล้ว: นักเรียน ({id}) ยังคงลงทะเบียนอยู่ในระบบ หากต้องการลงทะเบียนใหม่ โปรดติดต่อผู้ดูแลเพื่อลบข้อมูลก่อน`
-          : `تم التحقق من قاعدة البيانات الرسمية (Google Sheets): بيانات المشترك ({id}) ما زالت مسجلة ومعتمدة لدى الإدارة في الشيت. إذا كنت ترغب في التسجيل كطالب جديد، يرجى التواصل مع الإدارة لحذف قيدك أولاً ثم الضغط على هذا الزر مجدداً.`);
+          ? `ตรวจสอบกับ Google Sheets {sheet} แล้ว: นักเรียน ({id}) ยังคงลงทะเบียนอยู่ในระบบ หากต้องการลงทะเบียนใหม่ โปรดติดต่อผู้ดูแลเพื่อลบข้อมูลก่อน`
+          : `تم التحقق من قاعدة البيانات الرسمية (Google Sheets {sheet}): بيانات المشترك ({id}) ما زالت مسجلة ومعتمدة لدى الإدارة في الشيت. إذا كنت ترغب في التسجيل كطالب جديد، يرجى التواصل مع الإدارة لحذف قيدك أولاً ثم الضغط على هذا الزر مجدداً.`);
         setServerVerificationNotice({
           type: "info",
-          text: foundTemplate.replace("{id}", studentInfo)
+          text: foundTemplate.replace("{id}", studentInfo).replace("{sheet}", foundSheetName)
         });
       } else {
         setServerVerificationNotice({
@@ -515,6 +523,45 @@ export default function RegistrationModal({
     }
   };
 
+  const handleForceClearLocalLock = () => {
+    try {
+      localStorage.removeItem("thnoon_registered_student_id");
+      localStorage.removeItem("thnoon_registered_student_name");
+      localStorage.removeItem("thnoon_saved_subscriber");
+      localStorage.removeItem("thnoon_reg_attempts_count");
+      localStorage.removeItem("thnoon_last_reg_timestamp");
+    } catch (e) {}
+    setExistingStudentAlert(null);
+    setIsRepeatedDevice(false);
+    setRegistrationId(generateRegistrationId());
+    try {
+      window.dispatchEvent(new CustomEvent("thnoon_subscriber_unlocked"));
+    } catch (e) {}
+    setServerVerificationNotice({
+      type: "success",
+      text: formLang === "en"
+        ? "Device cache unlocked! The form is now open for a new registration."
+        : formLang === "th"
+        ? "ปลดล็อกอุปกรณ์แล้ว! แบบฟอร์มพร้อมสำหรับการลงทะเบียนใหม่แล้ว"
+        : "تم مسح القفل المحلي لهذا الجهاز بنجاح! الاستمارة مفتوحة وجاهزة الآن لتسجيل طالب جديد."
+    });
+  };
+
+  // Listen for admin duplicate lock changes in real-time
+  useEffect(() => {
+    const handleLockChanged = (e: any) => {
+      try {
+        const enabled = e?.detail?.enabled ?? (localStorage.getItem("thnoon_duplicate_lock_enabled") !== "false");
+        if (!enabled) {
+          setExistingStudentAlert(null);
+          setIsRepeatedDevice(false);
+        }
+      } catch (err) {}
+    };
+    window.addEventListener("thnoon_duplicate_lock_changed", handleLockChanged);
+    return () => window.removeEventListener("thnoon_duplicate_lock_changed", handleLockChanged);
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       formOpenedAtRef.current = Date.now();
@@ -529,6 +576,21 @@ export default function RegistrationModal({
         setErrors({});
         setIsSuccess(false);
         setSuccessInfo({});
+        return;
+      }
+
+      // Check if Admin has enabled the Duplicate Registration Lock (default is true)
+      const isLockActive = () => {
+        try {
+          return localStorage.getItem("thnoon_duplicate_lock_enabled") !== "false";
+        } catch (e) {
+          return true;
+        }
+      };
+
+      if (!isLockActive()) {
+        setExistingStudentAlert(null);
+        setIsRepeatedDevice(false);
         return;
       }
 
@@ -2096,14 +2158,41 @@ export default function RegistrationModal({
                       {getTrans("reg_already_registered_reset_desc", "للحفاظ على خصوصية الحسابات ومنع التكرار، إذا كنت ترغب في التسجيل من الصفر أو تعديل بياناتك، يرجى التواصل مع الإدارة ليقوم المشرف بحذف قيدك من النظام، ثم الضغط على زر التحقق أدناه لتحديث الحالة فوراً.")}
                     </p>
                     <div className="pt-2 flex items-center gap-2">
-                      <a
-                        href="#contact"
-                        onClick={() => onClose()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{getTrans("reg_already_registered_contact_btn", "التواصل مع الإدارة عبر وسائل الاتصال")}</span>
-                      </a>
+                      {(() => {
+                        const customContactUrl = 
+                          (getTrans("reg_already_registered_contact_url", "") || "").trim() ||
+                          (typeof window !== "undefined" ? (localStorage.getItem("thnoon_admin_contact_url") || "").trim() : "") ||
+                          (socialLinks?.line || "").trim() ||
+                          "";
+
+                        const resolvedContactHref = customContactUrl || "#contact";
+                        const isExternalLink = resolvedContactHref.startsWith("http://") || 
+                                               resolvedContactHref.startsWith("https://") || 
+                                               resolvedContactHref.startsWith("line:") || 
+                                               resolvedContactHref.startsWith("whatsapp:") ||
+                                               resolvedContactHref.startsWith("tg:") ||
+                                               resolvedContactHref.startsWith("mailto:") ||
+                                               resolvedContactHref.startsWith("tel:");
+
+                        return (
+                          <a
+                            href={resolvedContactHref}
+                            target={isExternalLink ? "_blank" : undefined}
+                            rel={isExternalLink ? "noopener noreferrer" : undefined}
+                            onClick={() => {
+                              if (!isExternalLink) {
+                                onClose();
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-emerald-950/70 text-slate-200 hover:text-emerald-300 border border-slate-700 hover:border-emerald-500/50 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                            title={resolvedContactHref !== "#contact" ? resolvedContactHref : "التواصل مع الإدارة"}
+                          >
+                            <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>{getTrans("reg_already_registered_contact_btn", "التواصل مع الإدارة عبر وسائل الاتصال")}</span>
+                            {isExternalLink && <ExternalLink className="w-3 h-3 text-emerald-400 opacity-80" />}
+                          </a>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -2116,19 +2205,21 @@ export default function RegistrationModal({
                         ? "ผู้ดูแลระบบได้ลบข้อมูลของคุณออกจาก Google Sheets แล้วใช่หรือไม่? คลิกปุ่มด้านล่างเพื่อตรวจสอบและปลดล็อกแบบฟอร์มเพื่อลงทะเบียนใหม่:"
                         : "هل قامت الإدارة بحذف بياناتك من الشيت وترغب في التسجيل كطالب جديد؟ اضغط على الزر أدناه لمراجعة السيرفر وإلغاء القفل فوراً:")}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleVerifyAccountWithServer}
-                      disabled={isVerifyingAccountOnServer}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500/20 to-amber-600/20 hover:from-amber-500 hover:to-amber-600 text-amber-300 hover:text-slate-950 border border-amber-500/50 hover:border-amber-400 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <RotateCw className={`w-4 h-4 ${isVerifyingAccountOnServer ? "animate-spin" : ""}`} />
-                      <span>
-                        {isVerifyingAccountOnServer
-                          ? getTrans("reg_server_verify_checking", formLang === "en" ? "Checking Google Sheets..." : formLang === "th" ? "กำลังตรวจสอบกับ Google Sheets..." : "جارٍ مراجعة الشيت وقاعدة البيانات...")
-                          : getTrans("reg_server_verify_btn", formLang === "en" ? "Refresh Form & Verify with Sheets 🔄" : formLang === "th" ? "รีเฟรชฟอร์มและตรวจสอบกับชีต 🔄" : "تحديث الفورم والتحقق من الشيت 🔄")}
-                      </span>
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={handleVerifyAccountWithServer}
+                        disabled={isVerifyingAccountOnServer}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-gradient-to-r from-amber-500/25 to-amber-600/25 hover:from-amber-500 hover:to-amber-600 text-amber-300 hover:text-slate-950 border border-amber-500/50 hover:border-amber-400 rounded-2xl text-xs sm:text-sm font-bold shadow-lg transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <RotateCw className={`w-4 h-4 ${isVerifyingAccountOnServer ? "animate-spin" : ""}`} />
+                        <span>
+                          {isVerifyingAccountOnServer
+                            ? getTrans("reg_server_verify_checking", formLang === "en" ? "Checking Google Sheets..." : formLang === "th" ? "กำลังตรวจสอบกับ Google Sheets..." : "جارٍ مراجعة الشيت وقاعدة البيانات...")
+                            : getTrans("reg_server_verify_btn", formLang === "en" ? "Refresh Form & Verify with Sheets 🔄" : formLang === "th" ? "รีเฟรชฟอร์มและตรวจสอบกับชีต 🔄" : "تحديث الفورم والتحقق من الشيت 🔄")}
+                        </span>
+                      </button>
+                    </div>
 
                     {serverVerificationNotice && (
                       <div

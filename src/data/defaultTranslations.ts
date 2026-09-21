@@ -875,6 +875,15 @@ export const DEFAULT_SITE_TRANSLATIONS: TranslationItem[] = [
     en: "Contact Administration"
   },
   {
+    id: "reg_already_registered_contact_url",
+    category: "registration",
+    categoryLabel: "استمارة التسجيل والاشتراك",
+    label: "رابط زر التواصل مع الإدارة (مثل: رابط تطبيق LINE أو WhatsApp أو رابط مباشر)",
+    ar: "",
+    th: "",
+    en: ""
+  },
+  {
     id: "reg_server_verify_prompt",
     category: "registration",
     categoryLabel: "استمارة التسجيل والاشتراك",

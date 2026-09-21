@@ -1117,6 +1117,7 @@ export default function App() {
         spreadsheetId={currentSpreadsheetId}
         driveFolderId={currentDriveFolderId}
         onOpenSubscriberPortal={handleOpenSubscriberPortalFromRegistration}
+        socialLinks={socialLinks}
       />
 
       {/* 7. Blocked / Suspended Account Notification Modal */}

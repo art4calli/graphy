@@ -1737,8 +1737,10 @@ export async function checkSubscriberAccountStatus(
 }
 
 /**
- * Rigorously checks whether a student's registration record still exists in Google Sheets
+ * Rigorously checks whether a student's registration record still exists in Google Sheets.
  * Checks both 'RegistrationAnswers' sheet AND 'Settings' sheet.
+ * Prevents false positives by targeting exact registration ID columns,
+ * and ensures robust anti-caching so admin deletions reflect immediately.
  * Returns:
  * - exists: true (record is found in the sheets)
  * - exists: false (sheets were checked successfully and record is definitely NOT present, i.e. admin deleted it)
@@ -1760,11 +1762,18 @@ export async function checkStudentRecordExistsInGoogleSheets(
   }
 
   let sheetsCheckedCount = 0;
+  const antiCacheToken = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-  // 1. Check RegistrationAnswers sheet via GVIZ
+  // 1. Check RegistrationAnswers sheet via GVIZ (Direct, Fast, Real-time)
   try {
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:json&sheet=RegistrationAnswers&_cb=${Date.now()}`;
-    const res = await fetch(gvizUrl, { cache: "no-store" });
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:json&sheet=RegistrationAnswers&_cb=${antiCacheToken}&nocache=${antiCacheToken}`;
+    const res = await fetch(gvizUrl, {
+      cache: "no-store",
+      headers: {
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
+    });
     if (res.ok) {
       const text = await res.text();
       const s = text.indexOf("{");
@@ -1775,15 +1784,42 @@ export async function checkStudentRecordExistsInGoogleSheets(
         const rows = json?.table?.rows || [];
         for (const row of rows) {
           const cells = (row?.c || []).map((c: any) => (c?.v !== null && c?.v !== undefined) ? String(c.v).trim() : "");
-          const matchId = cleanId && cells.some(v => v.toLowerCase() === cleanId || (cleanId.length >= 5 && v.toLowerCase().includes(cleanId)));
-          const matchName = cleanName && cells.some(v => v.toLowerCase() === cleanName || (cleanName.length >= 3 && v.toLowerCase().includes(cleanName)));
-          if (matchId || matchName) {
-            return {
-              exists: true,
-              checked: true,
-              foundIn: "RegistrationAnswers",
-              name: cells[2] || cells[1] || studentName
-            };
+          // Target specific columns for RegistrationAnswers:
+          // Column 0: Timestamp
+          // Column 1: Registration ID (رقم التسجيل)
+          // Column 2: Name (الاسم)
+          // Column 3: Arabic Name (الاسم بالعربي)
+          const col0 = (cells[0] || "").toLowerCase();
+          const rowRegId = (cells[1] || "").toLowerCase();
+          const rowName1 = (cells[2] || "").toLowerCase();
+          const rowName2 = (cells[3] || "").toLowerCase();
+
+          if (cleanId) {
+            // PRIMARY AND STRICT MATCH BY REGISTRATION ID:
+            // When an ID is provided, it is the sole unique primary key.
+            // Never do loose 'some()' or match random cells/questions.
+            const matchById = rowRegId === cleanId || col0 === cleanId || 
+              (cleanId.length >= 6 && rowRegId.includes(cleanId));
+            if (matchById) {
+              return {
+                exists: true,
+                checked: true,
+                foundIn: "RegistrationAnswers",
+                name: cells[2] || cells[3] || cells[1] || studentName
+              };
+            }
+          } else if (cleanName) {
+            // Fallback ONLY when there is NO registration ID at all:
+            // Match strictly on the designated Name columns (2 and 3), exact match.
+            const matchByName = rowName1 === cleanName || rowName2 === cleanName;
+            if (matchByName) {
+              return {
+                exists: true,
+                checked: true,
+                foundIn: "RegistrationAnswers",
+                name: cells[2] || cells[3] || studentName
+              };
+            }
           }
         }
       }
@@ -1794,8 +1830,14 @@ export async function checkStudentRecordExistsInGoogleSheets(
 
   // 2. Check Settings sheet via GVIZ
   try {
-    const gvizUrl = `https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:json&sheet=Settings&_cb=${Date.now()}`;
-    const res = await fetch(gvizUrl, { cache: "no-store" });
+    const gvizUrl = `https://docs.google.com/spreadsheets/d/${activeSheetId}/gviz/tq?tqx=out:json&sheet=Settings&_cb=${antiCacheToken}&nocache=${antiCacheToken}`;
+    const res = await fetch(gvizUrl, {
+      cache: "no-store",
+      headers: {
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      }
+    });
     if (res.ok) {
       const text = await res.text();
       const s = text.indexOf("{");
@@ -1807,20 +1849,34 @@ export async function checkStudentRecordExistsInGoogleSheets(
         for (const row of rows) {
           const r = row?.c || [];
           const getVal = (idx: number) => (r[idx] && r[idx].v !== null && r[idx].v !== undefined) ? r[idx].v.toString().trim() : "";
+          const sheetNameB = getVal(1).toLowerCase();
           const sheetUserZ = getVal(25).toLowerCase();
           const sheetRegId = getVal(26).toLowerCase();
-          const sheetNameB = getVal(1).toLowerCase();
 
-          const matchId = cleanId && (sheetRegId === cleanId || sheetUserZ === cleanId || (cleanId.length >= 5 && (sheetRegId.includes(cleanId) || sheetUserZ.includes(cleanId))));
-          const matchName = cleanName && (sheetNameB === cleanName || sheetUserZ === cleanName || (cleanName.length >= 3 && (sheetNameB.includes(cleanName) || sheetUserZ.includes(cleanName))));
-
-          if (matchId || matchName) {
-            return {
-              exists: true,
-              checked: true,
-              foundIn: "Settings",
-              name: getVal(1) || getVal(25) || studentName
-            };
+          if (cleanId) {
+            // STRICT MATCH BY REGISTRATION ID IN SETTINGS:
+            // Column 26 (AA) is Registration ID, Column 25 (Z) is Username/ID
+            const matchById = sheetRegId === cleanId || sheetUserZ === cleanId || 
+              (cleanId.length >= 6 && (sheetRegId.includes(cleanId) || sheetUserZ.includes(cleanId)));
+            if (matchById) {
+              return {
+                exists: true,
+                checked: true,
+                foundIn: "Settings",
+                name: getVal(1) || getVal(25) || studentName
+              };
+            }
+          } else if (cleanName) {
+            // Strict name match in Settings ONLY if cleanId is empty
+            const matchByName = sheetNameB === cleanName || sheetUserZ === cleanName;
+            if (matchByName) {
+              return {
+                exists: true,
+                checked: true,
+                foundIn: "Settings",
+                name: getVal(1) || getVal(25) || studentName
+              };
+            }
           }
         }
       }
@@ -1832,30 +1888,51 @@ export async function checkStudentRecordExistsInGoogleSheets(
   // 3. Fallback: Check via Apps Script GET (action=getRegistrationAnswers) if GVIZ could not verify
   if (sheetsCheckedCount === 0 && targetScriptUrl && targetScriptUrl.startsWith("http")) {
     try {
-      const gasUrl = `${targetScriptUrl}?action=getRegistrationAnswers&_cb=${Date.now()}`;
-      const gasRes = await fetch(gasUrl, { cache: "no-store" });
+      const gasUrl = `${targetScriptUrl}?action=getRegistrationAnswers&_cb=${antiCacheToken}`;
+      const gasRes = await fetch(gasUrl, {
+        cache: "no-store",
+        headers: {
+          "Pragma": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate"
+        }
+      });
       if (gasRes.ok) {
         sheetsCheckedCount++;
         const gasJson = await gasRes.json();
         const records = gasJson.records || [];
         for (const rec of records) {
-          const recId = String(rec.registrationId || rec["رقم التسجيل"] || "").toLowerCase();
-          const recName = String(rec.name || rec.nameArabic || rec["الاسم"] || rec["الاسم بالعربي"] || "").toLowerCase();
-          if ((cleanId && recId && (recId === cleanId || recId.includes(cleanId))) ||
-              (cleanName && recName && (recName === cleanName || recName.includes(cleanName)))) {
-            return {
-              exists: true,
-              checked: true,
-              foundIn: "AppsScript",
-              name: rec.name || rec["الاسم"] || studentName
-            };
+          const recId = String(rec.registrationId || rec["رقم التسجيل"] || "").trim().toLowerCase();
+          const recName = String(rec.name || rec["الاسم"] || "").trim().toLowerCase();
+          const recNameAr = String(rec.nameArabic || rec["الاسم بالعربي"] || "").trim().toLowerCase();
+
+          if (cleanId) {
+            if (recId === cleanId || (cleanId.length >= 6 && recId.includes(cleanId))) {
+              return {
+                exists: true,
+                checked: true,
+                foundIn: "AppsScript",
+                name: rec.name || rec["الاسم"] || studentName
+              };
+            }
+          } else if (cleanName) {
+            if (recName === cleanName || recNameAr === cleanName) {
+              return {
+                exists: true,
+                checked: true,
+                foundIn: "AppsScript",
+                name: rec.name || rec["الاسم"] || studentName
+              };
+            }
           }
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Apps Script check fallback error:", e);
+    }
   }
 
-  // If at least one sheet was successfully queried and the record was not found:
+  // If at least one sheet was successfully queried and the record was NOT found:
+  // The record was DEFINITELY deleted from Google Sheets by Admin!
   if (sheetsCheckedCount > 0) {
     return {
       exists: false,

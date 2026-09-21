@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Copy, Check, Link2, Database, Code2, Sparkles, AlertCircle, CheckCircle2, ExternalLink, RefreshCw, Layers, Folder, Languages, Globe, Bot, Mail, Send, Users, Shield, KeyRound, LogOut, Lock, UserCheck } from "lucide-react";
+import { X, Copy, Check, Link2, Database, Code2, Sparkles, AlertCircle, AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, Layers, Folder, Languages, Globe, Bot, Mail, Send, Users, Shield, KeyRound, LogOut, Lock, UserCheck, Trash2, Phone } from "lucide-react";
 import { GAS_BACKEND_CODE } from "../data/appsScriptCode";
 import { RegistrationQuestion, FormTranslationsMap, QuestionTranslation } from "../types";
 import SubscriberEmailSettings from "./SubscriberEmailSettings";
@@ -56,6 +56,52 @@ export default function IntegrationSettingsModal({
   const [isUpdatingAdmin, setIsUpdatingAdmin] = useState(false);
   const [adminUpdateMsg, setAdminUpdateMsg] = useState<string | null>(null);
   const [adminUpdateErr, setAdminUpdateErr] = useState<string | null>(null);
+
+  // Duplicate Registration Lock & Admin Contact Settings
+  const [duplicateLockEnabled, setDuplicateLockEnabled] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("thnoon_duplicate_lock_enabled") !== "false";
+    }
+    return true;
+  });
+  const [adminContactUrl, setAdminContactUrl] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("thnoon_admin_contact_url") || "";
+    }
+    return "";
+  });
+  const [lockActionNotice, setLockActionNotice] = useState<string | null>(null);
+
+  const handleToggleDuplicateLock = () => {
+    const nextState = !duplicateLockEnabled;
+    setDuplicateLockEnabled(nextState);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("thnoon_duplicate_lock_enabled", String(nextState));
+      try {
+        window.dispatchEvent(new CustomEvent("thnoon_duplicate_lock_changed", { detail: { enabled: nextState } }));
+      } catch (e) {}
+    }
+    setLockActionNotice(nextState 
+      ? "تم تفعيل قفل منع تكرار التسجيل بنجاح (الوضع الافتراضي المشدد نشط)!" 
+      : "تم تعطيل القفل مؤقتاً بنجاح! يمكن للطلاب أو المشرف التسجيل المتكرر دون حظر الآن."
+    );
+    setTimeout(() => setLockActionNotice(null), 4000);
+  };
+
+  const handleAdminClearDeviceLock = () => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("thnoon_registered_student_id");
+        localStorage.removeItem("thnoon_registered_student_name");
+        localStorage.removeItem("thnoon_saved_subscriber");
+        localStorage.removeItem("thnoon_reg_attempts_count");
+        localStorage.removeItem("thnoon_last_reg_timestamp");
+        window.dispatchEvent(new CustomEvent("thnoon_subscriber_unlocked"));
+      } catch (e) {}
+    }
+    setLockActionNotice("تم فك قفل هذا الجهاز ومسح بيانات الحظر المحلية بنجاح! يمكنك الآن تجربة التسجيل من الصفر.");
+    setTimeout(() => setLockActionNotice(null), 4000);
+  };
 
   // Form Translations State
   const [questions, setQuestions] = useState<RegistrationQuestion[]>([]);
@@ -412,6 +458,13 @@ export default function IntegrationSettingsModal({
     setTestResult(null);
     try {
       await onSaveConfig(scriptUrl.trim(), spreadsheetId.trim(), driveFolderId.trim());
+      if (typeof window !== "undefined") {
+        localStorage.setItem("thnoon_admin_contact_url", adminContactUrl.trim());
+        localStorage.setItem("thnoon_duplicate_lock_enabled", String(duplicateLockEnabled));
+        try {
+          window.dispatchEvent(new CustomEvent("thnoon_duplicate_lock_changed", { detail: { enabled: duplicateLockEnabled } }));
+        } catch (e) {}
+      }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err) {
@@ -824,6 +877,118 @@ export default function IntegrationSettingsModal({
                     <span>{copied ? "تم النسخ!" : "نسخ"}</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Direct Contact / Support Link (LINE, WhatsApp, etc.) */}
+              <div className="space-y-2 p-4 bg-slate-950/80 border border-slate-800 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-300 flex items-center gap-2 font-serif">
+                    <Phone className="w-4 h-4 text-emerald-400" />
+                    <span>رابط زر التواصل مع الإدارة (تطبيق LINE أو WhatsApp أو رابط مباشر):</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-sans">
+                    خاص بزر استمارة التسجيل
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  عند نقر المشترك على زر «التواصل مع الإدارة» في حالة التسجيل المسبق أو التوجيه، سيتم توجيهه مباشرة لهذا الرابط (مثال: رابط إضافة حساب LINE الرسمي أو واتساب). اتركه فارغاً للانتقال لقسم التواصل أسفل الصفحة تلقائياً.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    value={adminContactUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAdminContactUrl(val);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("thnoon_admin_contact_url", val.trim());
+                      }
+                    }}
+                    placeholder="مثال: https://line.me/ti/p/~username أو https://wa.me/669xxxxxxx"
+                    className="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-700 focus:border-amber-500 rounded-xl text-xs text-slate-100 font-mono focus:outline-none transition-colors"
+                  />
+                  {adminContactUrl.trim() && (
+                    <a
+                      href={adminContactUrl.trim()}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>تجربة</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Admin Control: Duplicate Registration Lock System */}
+              <div className="p-4 bg-slate-950/90 border border-amber-500/30 rounded-2xl space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span className="text-xs font-bold text-amber-300 font-serif">
+                      نظام قفل منع تكرار التسجيل على نفس الجهاز (Duplicate Registration Lock)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {duplicateLockEnabled ? (
+                      <span className="text-[10px] font-bold px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span>القفل نشط ومفعل (افتراضي)</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-rose-400" />
+                        <span>القفل معطل مؤقتاً بواسطة الإدارة</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                  يعمل هذا النظام افتراضياً على منع المشترك من إعادة التسجيل بعد التسجيل الأول من نفس الجهاز لمنع التكرار وحماية القيود. يمكنك كإدارة تعطيل القفل مؤقتاً للاختبار أو السماح بتسجيلات متعددة على جهاز واحد، ثم إعادة تشغيله في أي وقت.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleToggleDuplicateLock}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md ${
+                      duplicateLockEnabled
+                        ? "bg-slate-800 hover:bg-rose-950/80 text-rose-300 border border-rose-500/30 hover:border-rose-500/60"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                    }`}
+                  >
+                    {duplicateLockEnabled ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-rose-400" />
+                        <span>تعطيل قفل التكرار مؤقتاً ⏸️</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>إعادة تشغيل وتفعيل القفل المشدد ▶️</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAdminClearDeviceLock}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    title="خاص بالإدارة: فك القفل المحلي الحالي ومسح بيانات الحظر من هذا المتصفح"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-amber-400" />
+                    <span>فك قفل هذا الجهاز ومسح بيانات الحظر المحلية 🧹</span>
+                  </button>
+                </div>
+
+                {lockActionNotice && (
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs flex items-center gap-2 font-sans animate-in fade-in">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>{lockActionNotice}</span>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}

@@ -152,53 +152,57 @@ export default function SiteTextsManager() {
   return (
     <div className="space-y-6">
       {/* Top Banner & AI Action Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950/40 p-5 rounded-2xl border border-amber-500/30 shadow-xl relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative z-10">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Languages className="w-6 h-6 text-amber-400" />
-              <h2 className="font-serif text-lg font-bold text-amber-300">
-                إدارة نصوص الموقع والترجمات الذكية (3 لغات)
-              </h2>
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-amber-950/30 p-5 rounded-2xl border border-amber-500/30 shadow-xl relative overflow-hidden space-y-4">
+        {/* Title and Description stacked vertically */}
+        <div className="space-y-1.5 text-right relative z-10">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shrink-0">
+              <Languages className="w-5 h-5" />
             </div>
-            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              تحكم بجميع نصوص الموقع (العربية 🇸🇦، التايلاندية 🇹🇭، والإنجليزية 🇬🇧) مع إمكانية التعديل المباشر أو الترجمة التلقائية الفورية بالذكاء الاصطناعي بضغطة زر واحدة.
-            </p>
+            <h2 className="font-serif text-base sm:text-lg font-bold text-amber-300">
+              نصوص الصفحة والترجمات (3 لغات)
+            </h2>
           </div>
+          <p className="text-xs text-slate-300 max-w-3xl leading-relaxed pr-1 font-sans">
+            تحكم بجميع نصوص الموقع (العربية 🇸🇦، التايلاندية 🇹🇭، والإنجليزية 🇬🇧) مع إمكانية التعديل المباشر أو الترجمة التلقائية الفورية بالذكاء الاصطناعي بضغطة زر واحدة.
+          </p>
+        </div>
 
-          {/* Global Buttons */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={handleTranslateAll}
-              disabled={isTranslatingAI}
-              className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50"
-            >
-              {isTranslatingAI && !translatingCategory && !translatingItemId ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
-              )}
-              <span>ترجمة كافة الموقع بالذكاء الاصطناعي 🪄</span>
-            </button>
+        {/* Global Action Buttons - Underneath the texts */}
+        <div className="pt-3 border-t border-slate-700/60 flex flex-wrap items-center gap-2.5 relative z-10">
+          <button
+            type="button"
+            onClick={handleTranslateAll}
+            disabled={isTranslatingAI}
+            className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            {isTranslatingAI && !translatingCategory && !translatingItemId ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
+            )}
+            <span>ترجمة كافة الموقع بالذكاء الاصطناعي 🪄</span>
+          </button>
 
-            <button
-              onClick={handleSaveAll}
-              disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            >
-              {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>حفظ التعديلات</span>
-            </button>
+          <button
+            type="button"
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-600/20"
+          >
+            {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            <span>حفظ التعديلات</span>
+          </button>
 
-            <button
-              onClick={handleReset}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors border border-slate-700"
-              title="استعادة النصوص الافتراضية"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>استعادة الافتراضي</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors border border-slate-700 cursor-pointer"
+            title="استعادة النصوص الافتراضية"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>استعادة الافتراضي</span>
+          </button>
         </div>
 
         {/* Status Toast */}
@@ -248,7 +252,7 @@ export default function SiteTextsManager() {
           <span>عدد النصوص: </span>
           <span className="text-amber-400 font-bold">{filteredTranslations.length}</span>
           <span>من إجمالي</span>
-          <span className="text-white font-bold">{translations.filter(t => t.category !== "registration").length}</span>
+          <span className="text-white font-bold">{translations.length}</span>
         </div>
       </div>
 
@@ -264,7 +268,7 @@ export default function SiteTextsManager() {
         >
           <span>كافة الأقسام</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === "all" ? "bg-slate-950/20 text-slate-950" : "bg-slate-800 text-slate-400"}`}>
-            {translations.filter(t => t.category !== "registration").length}
+            {translations.length}
           </span>
         </button>
 
