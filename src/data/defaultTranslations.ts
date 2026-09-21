@@ -1113,6 +1113,42 @@ export const DEFAULT_SITE_TRANSLATIONS: TranslationItem[] = [
     en: "Verifying credentials and preparing content, please wait..."
   },
   {
+    id: "subscriber_loading_header",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "عنوان نافذة انتظار قراءة بيانات الطالب",
+    ar: "جاري التحقق وقراءة بيانات الطالب...",
+    th: "กำลังตรวจสอบและอ่านข้อมูลของนักเรียน...",
+    en: "Verifying and reading student data..."
+  },
+  {
+    id: "subscriber_loading_desc",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "وصف نافذة انتظار قراءة بيانات الطالب",
+    ar: "يرجى الانتظار لحظات ريثما يتم جلب موضوعك المخصص من جدول البيانات وتجهيز صفحتك.",
+    th: "โปรดรอสักครู่ขณะกำลังดึงหัวข้อที่กำหนดเองจากตารางข้อมูลและเตรียมหน้าของคุณ",
+    en: "Please wait a moment while your dedicated topic is retrieved from the spreadsheet and your page is prepared."
+  },
+  {
+    id: "subscriber_loading_topic_title",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "عنوان انتظار تجهيز بطاقات المحتوى التعليمي",
+    ar: "جاري قراءة وتجهيز بطاقات المحتوى التعليمي...",
+    th: "กำลังอ่านและเตรียมการ์ดเนื้อหาการเรียนรู้...",
+    en: "Reading and preparing educational content cards..."
+  },
+  {
+    id: "subscriber_loading_topic_desc",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "وصف انتظار تجهيز بطاقات المحتوى التعليمي",
+    ar: "يتم الآن جلب البطاقات والروابط المخصصة لموضوعك من جدول البيانات، يرجى الانتظار ثوانٍ معدودة.",
+    th: "กำลังดึงการ์ดและลิงก์เฉพาะสำหรับหัวข้อของคุณจากตารางข้อมูล โปรดรอสักครู่",
+    en: "Dedicated cards and links for your topic are being fetched from the spreadsheet, please wait a few seconds."
+  },
+  {
     id: "subscriber_new_user_prompt",
     category: "subscriber",
     categoryLabel: "بوابة المشتركين والدخول",

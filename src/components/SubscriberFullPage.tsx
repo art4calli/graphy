@@ -32,7 +32,7 @@ import {
   parseTelegramUrls
 } from "../utils/googleBackendBridge";
 import { useLanguage } from "../context/LanguageContext";
-import { translateBatchWithAI } from "../utils/translatorService";
+import { translateBatchWithAI, getInstantLookup } from "../utils/translatorService";
 import RegistrationModal from "./RegistrationModal";
 
 interface SubscriberFullPageProps {
@@ -276,6 +276,8 @@ export default function SubscriberFullPage({
     if (currentLang === "en") {
       if (enText && enText.trim()) return enText;
       if (arText) {
+        const instant = getInstantLookup(arText);
+        if (instant && instant.en) return instant.en;
         const fromDict = t(arText, "");
         if (fromDict && fromDict !== arText) return fromDict;
       }
@@ -283,6 +285,8 @@ export default function SubscriberFullPage({
     if (currentLang === "th") {
       if (thText && thText.trim()) return thText;
       if (arText) {
+        const instant = getInstantLookup(arText);
+        if (instant && instant.th) return instant.th;
         const fromDict = t(arText, "");
         if (fromDict && fromDict !== arText) return fromDict;
       }
@@ -291,7 +295,43 @@ export default function SubscriberFullPage({
     return t(arText, arText);
   };
 
-  const [topicContent, setTopicContent] = useState<SubscriberTopicContent | null>(subscriber.content || null);
+  const getCachedTopic = useCallback((base: SubscriberTopicContent | null): SubscriberTopicContent | null => {
+    if (!base) return null;
+    const topicId = subscriber.topicId || "1";
+    try {
+      const cachedRaw = localStorage.getItem(`thnoon_topic_content_${topicId}`);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (cached && Array.isArray(cached.cards) && cached.cards.length > 0) {
+          return {
+            ...base,
+            titleEn: base.titleEn || cached.titleEn,
+            titleTh: base.titleTh || cached.titleTh,
+            descriptionEn: base.descriptionEn || cached.descriptionEn,
+            descriptionTh: base.descriptionTh || cached.descriptionTh,
+            badgeEn: base.badgeEn || cached.badgeEn,
+            badgeTh: base.badgeTh || cached.badgeTh,
+            cards: base.cards.map((c, i) => {
+              const cc = cached.cards?.[i];
+              if (!cc) return c;
+              return {
+                ...c,
+                titleEn: c.titleEn || cc.titleEn,
+                titleTh: c.titleTh || cc.titleTh,
+                descriptionEn: c.descriptionEn || cc.descriptionEn,
+                descriptionTh: c.descriptionTh || cc.descriptionTh
+              };
+            })
+          };
+        }
+      }
+    } catch (e) {}
+    return base;
+  }, [subscriber.topicId]);
+
+  const [topicContent, setTopicContent] = useState<SubscriberTopicContent | null>(() => {
+    return getCachedTopic(subscriber.content || null);
+  });
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(
     !subscriber.content || !subscriber.content.cards || subscriber.content.cards.length === 0
   );
@@ -362,13 +402,19 @@ export default function SubscriberFullPage({
                   descriptionTh: trDesc?.th || cd.descriptionTh
                 };
               });
+
+              // Save translations persistently in localStorage so subsequent renders are instant!
+              try {
+                localStorage.setItem(`thnoon_topic_content_${subscriber.topicId || "1"}`, JSON.stringify(next));
+              } catch (e) {}
+
               return next;
             });
           }
         }).catch(() => {});
       }
     }
-  }, [currentLang, topicContent]);
+  }, [currentLang, topicContent, subscriber.topicId]);
 
   // Helper to load topic content directly from Google Sheets
   const reloadContent = useCallback(async (manual = false) => {
@@ -377,7 +423,8 @@ export default function SubscriberFullPage({
       const topicIdToFetch = subscriber.topicId || "1";
       const fetched = await fetchSubscriberTopicContent(topicIdToFetch);
       if (fetched && fetched.cards && fetched.cards.length > 0) {
-        setTopicContent(fetched);
+        const enriched = getCachedTopic(fetched) || fetched;
+        setTopicContent(enriched);
       }
     } catch (err) {
       console.warn("Could not reload topic content:", err);
@@ -385,18 +432,19 @@ export default function SubscriberFullPage({
       setIsLoadingContent(false);
       if (manual) setIsRefreshing(false);
     }
-  }, [subscriber.topicId]);
+  }, [subscriber.topicId, getCachedTopic]);
 
   // Initial load & sync if content is missing on mobile / tablet
   useEffect(() => {
     if (subscriber.content && subscriber.content.cards && subscriber.content.cards.length > 0) {
-      setTopicContent(subscriber.content);
+      const enriched = getCachedTopic(subscriber.content) || subscriber.content;
+      setTopicContent(enriched);
       setIsLoadingContent(false);
     } else {
       setIsLoadingContent(true);
       reloadContent(false);
     }
-  }, [subscriber.content, subscriber.topicId, reloadContent]);
+  }, [subscriber.content, subscriber.topicId, reloadContent, getCachedTopic]);
 
   // Live account status watcher (Columns AB status: if set to ممنوع, kick out immediately)
   useEffect(() => {

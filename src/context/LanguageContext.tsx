@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { LanguageCode, DEFAULT_SITE_TRANSLATIONS, TranslationItem } from "../data/defaultTranslations";
 import { AppData } from "../types";
 import { extractTranslationsFromAppData } from "../utils/sheetTranslationExtractor";
-import { translateTextToBoth, translateBatchWithAI } from "../utils/translatorService";
+import { translateTextToBoth, translateBatchWithAI, getInstantLookup } from "../utils/translatorService";
 import { saveSiteTranslationsBridge, fetchSiteTranslationsBridge } from "../utils/googleBackendBridge";
 
 interface LanguageContextType {
@@ -15,7 +15,9 @@ interface LanguageContextType {
   updateMultipleTranslations: (items: TranslationItem[]) => void;
   resetToDefaults: () => void;
   saveTranslationsToServer: () => Promise<{ success: boolean; message: string }>;
+  reloadTranslationsFromSheet: () => Promise<{ success: boolean; message: string; count?: number }>;
   isTranslatingAI: boolean;
+  isSyncingSheet: boolean;
   translateItemWithAI: (id: string) => Promise<{ success: boolean; message: string }>;
   translateCategoryWithAI: (category: string) => Promise<{ success: boolean; message: string; count?: number }>;
   translateAllWithAI: () => Promise<{ success: boolean; message: string; count?: number }>;
@@ -85,42 +87,73 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   });
 
   const [isTranslatingAI, setIsTranslatingAI] = useState(false);
+  const [isSyncingSheet, setIsSyncingSheet] = useState(false);
   const [isSheetSynced, setIsSheetSynced] = useState(false);
 
-  // Load saved translations from server / Google Sheet on mount
-  useEffect(() => {
-    fetchSiteTranslationsBridge()
-      .then((data) => {
-        if (data && data.success && Array.isArray(data.translations) && data.translations.length > 0) {
-          setTranslations((prev) => {
-            const serverMap = new Map<string, TranslationItem>();
-            data.translations.forEach((item: TranslationItem) => {
-              if (item && item.id) serverMap.set(item.id, item);
-            });
-
-            const next = prev.map((item) => {
-              const serverItem = serverMap.get(item.id);
-              if (serverItem) {
-                return {
-                  ...item,
-                  th: serverItem.th || item.th,
-                  en: serverItem.en || item.en,
-                };
-              }
-              return item;
-            });
-
-            if (typeof window !== "undefined") {
-              localStorage.setItem(STORAGE_TRANS_KEY, JSON.stringify(next));
-            }
-            return next;
+  // Manual or on-demand fetch from Google Sheet SiteTranslations tab
+  const reloadTranslationsFromSheet = useCallback(async (): Promise<{ success: boolean; message: string; count?: number }> => {
+    try {
+      setIsSyncingSheet(true);
+      const data = await fetchSiteTranslationsBridge();
+      if (data && data.success && Array.isArray(data.translations) && data.translations.length > 0) {
+        let updatedCount = 0;
+        setTranslations((prev) => {
+          const serverMap = new Map<string, TranslationItem>();
+          data.translations.forEach((item: TranslationItem) => {
+            if (item && item.id) serverMap.set(item.id, item);
           });
-        }
-      })
-      .catch(() => {});
+
+          const next = prev.map((item) => {
+            const serverItem = serverMap.get(item.id);
+            if (serverItem) {
+              const hasChange =
+                (serverItem.th && serverItem.th !== item.th) ||
+                (serverItem.en && serverItem.en !== item.en);
+              if (hasChange) updatedCount++;
+              return {
+                ...item,
+                th: serverItem.th || item.th,
+                en: serverItem.en || item.en,
+              };
+            }
+            return item;
+          });
+
+          // Also include any new keys from the sheet that were not in local state
+          data.translations.forEach((serverItem: TranslationItem) => {
+            if (serverItem && serverItem.id && !next.some((it) => it.id === serverItem.id)) {
+              next.push(serverItem);
+              updatedCount++;
+            }
+          });
+
+          if (typeof window !== "undefined") {
+            localStorage.setItem(STORAGE_TRANS_KEY, JSON.stringify(next));
+          }
+          return next;
+        });
+
+        return {
+          success: true,
+          message: `تم جلب وتحديث ${data.translations.length} ترجمة بنجاح من ورقة SiteTranslations في قوقل شيت!`,
+          count: data.translations.length,
+        };
+      }
+      return {
+        success: false,
+        message: "لم يتم العثور على ترجمات صالحة في ورقة SiteTranslations بقوقل شيت.",
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: "تعذر استيراد الترجمات من الشيت: " + (err.message || "حدث خطأ غير متوقع"),
+      };
+    } finally {
+      setIsSyncingSheet(false);
+    }
   }, []);
 
-  // Sync translations dynamically with Google Sheet AppData
+  // Sync translations dynamically with Google Sheet AppData (when AppData loads Arabic content from other sheets)
   const syncWithAppData = useCallback((appData: AppData) => {
     if (!appData) return;
     setTranslations((prev) => {
@@ -214,14 +247,34 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       if (!item) {
+        if (currentLang !== "ar") {
+          const lookupTarget = cleanFallback || cleanKey || "";
+          if (lookupTarget) {
+            const instant = getInstantLookup(lookupTarget);
+            if (instant) {
+              if (currentLang === "th" && instant.th) return instant.th;
+              if (currentLang === "en" && instant.en) return instant.en;
+            }
+          }
+        }
         return fallbackAr || key;
       }
 
       if (currentLang === "th") {
-        return item.th?.trim() || item.ar || fallbackAr || key;
+        if (item.th?.trim()) return item.th.trim();
+        if (item.ar) {
+          const instant = getInstantLookup(item.ar);
+          if (instant && instant.th) return instant.th;
+        }
+        return item.ar || fallbackAr || key;
       }
       if (currentLang === "en") {
-        return item.en?.trim() || item.ar || fallbackAr || key;
+        if (item.en?.trim()) return item.en.trim();
+        if (item.ar) {
+          const instant = getInstantLookup(item.ar);
+          if (instant && instant.en) return instant.en;
+        }
+        return item.ar || fallbackAr || key;
       }
       return item.ar?.trim() || fallbackAr || key;
     },
@@ -414,7 +467,9 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateMultipleTranslations,
         resetToDefaults,
         saveTranslationsToServer,
+        reloadTranslationsFromSheet,
         isTranslatingAI,
+        isSyncingSheet,
         translateItemWithAI,
         translateCategoryWithAI,
         translateAllWithAI,

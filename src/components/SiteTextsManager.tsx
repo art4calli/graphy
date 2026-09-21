@@ -13,7 +13,8 @@ import {
   Globe,
   SlidersHorizontal,
   Bookmark,
-  Layers
+  Layers,
+  RefreshCw
 } from "lucide-react";
 import { useLanguage } from "../context/LanguageContext";
 import { TranslationItem } from "../data/defaultTranslations";
@@ -25,7 +26,9 @@ export default function SiteTextsManager() {
     updateMultipleTranslations,
     resetToDefaults,
     saveTranslationsToServer,
+    reloadTranslationsFromSheet,
     isTranslatingAI,
+    isSyncingSheet,
     translateItemWithAI,
     translateCategoryWithAI,
     translateAllWithAI,
@@ -142,6 +145,16 @@ export default function SiteTextsManager() {
     setStatusMsg({ type: "success", text: res.message });
   };
 
+  const handleReloadFromSheet = async () => {
+    setStatusMsg(null);
+    const res = await reloadTranslationsFromSheet();
+    if (res.success) {
+      setStatusMsg({ type: "success", text: res.message });
+    } else {
+      setStatusMsg({ type: "error", text: res.message });
+    }
+  };
+
   const handleReset = () => {
     if (window.confirm("هل أنت متأكد من استعادة كافة النصوص والترجمات إلى القيم الافتراضية؟")) {
       resetToDefaults();
@@ -164,7 +177,7 @@ export default function SiteTextsManager() {
             </h2>
           </div>
           <p className="text-xs text-slate-300 max-w-3xl leading-relaxed pr-1 font-sans">
-            تحكم بجميع نصوص الموقع (العربية 🇸🇦، التايلاندية 🇹🇭، والإنجليزية 🇬🇧) مع إمكانية التعديل المباشر أو الترجمة التلقائية الفورية بالذكاء الاصطناعي بضغطة زر واحدة.
+            يعتمد الموقع على قراءة الترجمات فورياً من النظام الداخلي لضمان سرعة فائقة بدون أي تأخير للزوار. يمكنك التعديل والترجمة بالذكاء الاصطناعي ثم الضغط على <strong>"حفظ ومزامنة مع الشيت"</strong> لتسجيلها في ورقة <code className="text-amber-300">SiteTranslations</code> كمرجع سحابي، أو الضغط على <strong>"استيراد الترجمات من الشيت"</strong> عند الرغبة في جلب تعديلات قمت بها داخل قوقل شيت مباشرة.
           </p>
         </div>
 
@@ -191,7 +204,18 @@ export default function SiteTextsManager() {
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-md shadow-emerald-600/20"
           >
             {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            <span>حفظ التعديلات</span>
+            <span>حفظ ومزامنة مع الشيت</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleReloadFromSheet}
+            disabled={isSyncingSheet}
+            className="bg-cyan-900/40 hover:bg-cyan-800/60 text-cyan-300 hover:text-cyan-200 border border-cyan-500/40 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+            title="جلب آخر الترجمات المعدلة من ورقة SiteTranslations في قوقل شيت"
+          >
+            {isSyncingSheet ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            <span>استيراد الترجمات من الشيت</span>
           </button>
 
           <button

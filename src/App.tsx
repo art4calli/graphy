@@ -245,13 +245,33 @@ export default function App() {
                   links.push({ text, comment, url });
                 }
               }
+              // Check if cached translated topic content exists to display translated cards immediately
+              let restoredContent = subData.content;
+              try {
+                const topicKey = `thnoon_topic_content_${subData.topicId || "1"}`;
+                const cachedTopicRaw = localStorage.getItem(topicKey);
+                if (cachedTopicRaw) {
+                  const cachedTopic = JSON.parse(cachedTopicRaw);
+                  if (cachedTopic && Array.isArray(cachedTopic.cards) && cachedTopic.cards.length > 0) {
+                    restoredContent = {
+                      ...(subData.content || {}),
+                      ...cachedTopic,
+                      cards: (subData.content?.cards || cachedTopic.cards).map((c: any, i: number) => ({
+                        ...c,
+                        ...(cachedTopic.cards?.[i] || {})
+                      }))
+                    };
+                  }
+                }
+              } catch (e) {}
+
               setSubscriber({
                 isLoggedIn: true,
                 subscriberName: subData.subscriberName,
                 topicId: subData.topicId,
                 registrationId: subData.registrationId || subData.password || checkUser,
                 username: subData.username || checkUser,
-                content: subData.content,
+                content: restoredContent,
                 links,
                 exitButtonText: subData.exitButtonText,
                 exitButtonComment: subData.exitButtonComment,
@@ -641,19 +661,26 @@ export default function App() {
       const screenRes = `${window.screen.width}x${window.screen.height}`;
       const fullDeviceInfo = `${deviceCategory} [${browserName}] - دقة: ${screenRes}`;
 
-      // 2. Check geo permission (GPS coordinates)
+      // 2. Fast non-blocking geo check (GPS/Network coordinates)
       let coords: { latitude: number; longitude: number } | null = null;
       try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 3500,
-            maximumAge: 60000
-          });
-        });
-        coords = pos.coords;
+        if (typeof navigator !== "undefined" && "geolocation" in navigator) {
+          const pos = await Promise.race([
+            new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: false, // Low power network location (fast)
+                timeout: 300,
+                maximumAge: 300000 // Accept 5 min cached coordinates instantly
+              });
+            }),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 300))
+          ]);
+          if (pos && (pos as GeolocationPosition).coords) {
+            coords = (pos as GeolocationPosition).coords;
+          }
+        }
       } catch (e) {
-        console.log("Geolocation omitted or rejected");
+        // Continue smoothly with timezone location
       }
 
       // 3. Smart Location Name synthesis (City/Country mapping based on Timezone or GPS)
@@ -735,13 +762,33 @@ export default function App() {
             links.push({ text, comment, url });
           }
         }
+        // Check if cached translated topic content exists to display translated cards immediately
+        let finalTopicContent = data.content;
+        try {
+          const topicKey = `thnoon_topic_content_${data.topicId || "1"}`;
+          const cachedTopicRaw = localStorage.getItem(topicKey);
+          if (cachedTopicRaw) {
+            const cachedTopic = JSON.parse(cachedTopicRaw);
+            if (cachedTopic && Array.isArray(cachedTopic.cards) && cachedTopic.cards.length > 0) {
+              finalTopicContent = {
+                ...(data.content || {}),
+                ...cachedTopic,
+                cards: (data.content?.cards || cachedTopic.cards).map((c: any, i: number) => ({
+                  ...c,
+                  ...(cachedTopic.cards?.[i] || {})
+                }))
+              };
+            }
+          }
+        } catch (e) {}
+
         setSubscriber({
           isLoggedIn: true,
           subscriberName: data.subscriberName,
           topicId: data.topicId,
           registrationId: data.registrationId || data.password || usernameInput,
           username: data.username || usernameInput,
-          content: data.content,
+          content: finalTopicContent,
           links,
           exitButtonText: data.exitButtonText,
           exitButtonComment: data.exitButtonComment,
