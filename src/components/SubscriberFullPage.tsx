@@ -581,13 +581,14 @@ export default function SubscriberFullPage({
               <span>➕</span>
             </button>
 
-            {/* Prominent Exit Button */}
+            {/* Prominent Exit Button - Icon only, enlarged, distinctive vivid ruby color */}
             <button
               onClick={onLogout}
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500/15 to-red-600/15 hover:from-red-500 hover:to-red-600 text-red-300 hover:text-white border border-red-500/30 rounded-xl px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-bold transition-all shadow-md cursor-pointer"
+              title={subscriber.exitButtonText ? t(subscriber.exitButtonText, subscriber.exitButtonText) : t("subscriber_exit_portal_btn", "الخروج والعودة للرئيسية")}
+              aria-label={subscriber.exitButtonText ? t(subscriber.exitButtonText, subscriber.exitButtonText) : t("subscriber_exit_portal_btn", "الخروج والعودة للرئيسية")}
+              className="inline-flex items-center justify-center bg-gradient-to-r from-rose-500/25 to-red-600/25 hover:from-rose-600 hover:to-red-600 text-rose-300 hover:text-white border-2 border-rose-500/50 hover:border-rose-400 rounded-xl w-9 h-9 sm:w-10 sm:h-10 transition-all shadow-lg shadow-rose-950/40 cursor-pointer shrink-0 group"
             >
-              <LogOut className="w-4 h-4" />
-              <span>{subscriber.exitButtonText ? t(subscriber.exitButtonText, subscriber.exitButtonText) : t("subscriber_exit_portal_btn", "الخروج والعودة للرئيسية")}</span>
+              <LogOut className="w-5 h-5 text-rose-300 group-hover:text-white transition-transform group-hover:scale-110" />
             </button>
           </div>
 

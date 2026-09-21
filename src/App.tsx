@@ -325,7 +325,21 @@ export default function App() {
           hash === "#subscriber" ||
           hash === "#subscribers";
 
-        if (isPortalRequested) {
+        // 3.5 Cross-Page Auto-Login parameters (?subscriber_id=... / ?user=... / ?reg_id=...)
+        const urlUser = searchParams.get("subscriber_id") || searchParams.get("user") || searchParams.get("reg_id") || searchParams.get("id");
+        const urlPass = searchParams.get("pass") || searchParams.get("password") || urlUser;
+        const urlName = searchParams.get("name") || searchParams.get("student_name");
+
+        if (urlUser) {
+          setSubscriberInitialCreds({
+            username: urlUser,
+            password: urlPass || urlUser,
+            notice: urlName
+              ? `أهلاً بك يا ${urlName}! تم تعبئة رقمك المرجعي (${urlUser}) تلقائياً.`
+              : undefined
+          });
+          setIsLoginOpen(true);
+        } else if (isPortalRequested) {
           setIsLoginOpen(true);
         }
 
@@ -686,8 +700,32 @@ export default function App() {
       );
 
       if (data && data.success) {
+        const studentRegId = data.registrationId || data.password || usernameInput;
+        const studentName = data.subscriberName || usernameInput;
+
         sessionStorage.setItem("subscriberLogin", JSON.stringify(data));
         localStorage.setItem("thnoon_saved_subscriber", JSON.stringify({ username: usernameInput, data }));
+        
+        // Permanent cross-page SSO credentials for external/sub-pages
+        try {
+          localStorage.setItem("thnoon_subscriber_id", studentRegId);
+          localStorage.setItem("thnoon_subscriber_name", studentName);
+          localStorage.setItem(
+            "thnoon_subscriber_auth",
+            JSON.stringify({
+              registrationId: studentRegId,
+              name: studentName,
+              topicId: data.topicId || "1",
+              timestamp: Date.now()
+            })
+          );
+          // Set cross-path cookie
+          document.cookie = `thnoon_sub_id=${encodeURIComponent(studentRegId)}; path=/; max-age=2592000; SameSite=Lax`;
+          document.cookie = `thnoon_sub_name=${encodeURIComponent(studentName)}; path=/; max-age=2592000; SameSite=Lax`;
+        } catch (storageErr) {
+          console.warn("Cross-page storage save warning:", storageErr);
+        }
+
         const links = [];
         for (let i = 1; i <= 5; i++) {
           const text = data[`linkButtonText${i}`];
@@ -714,6 +752,13 @@ export default function App() {
         if (data?.isBlocked) {
           sessionStorage.removeItem("subscriberLogin");
           localStorage.removeItem("thnoon_saved_subscriber");
+          localStorage.removeItem("thnoon_subscriber_id");
+          localStorage.removeItem("thnoon_subscriber_name");
+          localStorage.removeItem("thnoon_subscriber_auth");
+          try {
+            document.cookie = "thnoon_sub_id=; path=/; max-age=0";
+            document.cookie = "thnoon_sub_name=; path=/; max-age=0";
+          } catch (e) {}
           setBlockedNotice(data.message || "تم إيقاف أو تعليق هذا الحساب من قبل الإدارة (حالة الاشتراك: ممنوع)");
         }
         return { success: false, message: data?.message || "اسم المستخدم أو كلمة المرور غير صحيحة" };
@@ -727,18 +772,35 @@ export default function App() {
   const handleLogout = () => {
     sessionStorage.removeItem("subscriberLogin");
     localStorage.removeItem("thnoon_saved_subscriber");
+    localStorage.removeItem("thnoon_subscriber_id");
+    localStorage.removeItem("thnoon_subscriber_name");
+    localStorage.removeItem("thnoon_subscriber_auth");
+    try {
+      document.cookie = "thnoon_sub_id=; path=/; max-age=0";
+      document.cookie = "thnoon_sub_name=; path=/; max-age=0";
+    } catch (e) {}
     setSubscriber({ isLoggedIn: false, links: [] });
     setIsDashboardOpen(false);
   };
 
   const handleOpenSubscriberPortalFromRegistration = (data: { registrationId: string; name?: string }) => {
     setIsRegistrationOpen(false);
+    const welcomeTemplate = t(
+      "subscriber_autofill_welcome_notice",
+      "أهلاً بك يا {name}! تم تعبئة رقمك المرجعي ({id}) تلقائياً لتسهيل وسرعة دخولك."
+    );
+    const nonameTemplate = t(
+      "subscriber_autofill_notice_noname",
+      "تم تعبئة رقمك المرجعي (#{id}) تلقائياً. انقر على زر الدخول للوصول لبوابتك."
+    );
+    const noticeText = data.name
+      ? welcomeTemplate.replace("{name}", data.name).replace("{id}", data.registrationId)
+      : nonameTemplate.replace("{id}", data.registrationId);
+
     setSubscriberInitialCreds({
       username: data.registrationId || data.name || "",
       password: data.registrationId || "",
-      notice: data.name
-        ? `أهلاً بك يا ${data.name}! تم تعبئة رقمك المرجعي (${data.registrationId}) تلقائياً لتسهيل وسرعة دخولك.`
-        : `تم تعبئة رقمك المرجعي (#${data.registrationId}) تلقائياً. انقر على زر الدخول للوصول لبوابتك.`
+      notice: noticeText
     });
     setIsLoginOpen(true);
   };

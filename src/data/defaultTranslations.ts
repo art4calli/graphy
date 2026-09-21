@@ -969,6 +969,33 @@ export const DEFAULT_SITE_TRANSLATIONS: TranslationItem[] = [
   // 10. بوابة المشتركين (Subscriber Portal)
   // -------------------------------------------------------------
   {
+    id: "subscriber_autofill_welcome_notice",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "رسالة الترحيب وتعبئة الرقم المرجعي تلقائياً",
+    ar: "أهلاً بك يا {name}! تم تعبئة رقمك المرجعي ({id}) تلقائياً لتسهيل وسرعة دخولك.",
+    th: "ยินดีต้อนรับคุณ {name}! ได้กรอกหมายเลขลงทะเบียนของคุณ ({id}) โดยอัตโนมัติเพื่อความสะดวกและรวดเร็ว",
+    en: "Welcome {name}! Your reference number ({id}) has been automatically filled for quick and easy access."
+  },
+  {
+    id: "subscriber_autofill_notice_noname",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "رسالة تعبئة الرقم المرجعي تلقائياً (بدون اسم)",
+    ar: "تم تعبئة رقمك المرجعي (#{id}) تلقائياً. انقر على زر الدخول للوصول لبوابتك.",
+    th: "ได้กรอกหมายเลขลงทะเบียนของคุณ (#{id}) โดยอัตโนมัติ คลิกปุ่มเข้าสู่ระบบเพื่อเข้าสู่พอร์ทัลของคุณ",
+    en: "Your reference number (#{id}) has been automatically filled. Click Login to access your portal."
+  },
+  {
+    id: "subscriber_max_devices_warning",
+    category: "subscriber",
+    categoryLabel: "بوابة المشتركين والدخول",
+    label: "رسالة تحذير استنفاد الحد الأقصى للأجهزة المسموحة",
+    ar: "رسالة تحذير: لقد استنفدت الحد الأقصى المسموح به من الأجهزة ({count} جهاز). يرجى التواصل مع الإدارة لإعادة التعيين.",
+    th: "คำเตือน: คุณใช้อุปกรณ์ครบตามจำนวนสูงสุดที่อนุญาตแล้ว ({count} เครื่อง) โปรดติดต่อผู้ดูแลระบบเพื่อรีเซ็ต",
+    en: "Warning: You have reached the maximum allowed number of devices ({count} devices). Please contact the administration to reset."
+  },
+  {
     id: "subscriber_login_title",
     category: "subscriber",
     categoryLabel: "بوابة المشتركين والدخول",

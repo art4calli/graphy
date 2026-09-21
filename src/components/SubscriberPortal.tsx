@@ -91,7 +91,18 @@ export default function SubscriberPortal({
         onClose();
       } else {
         setIsLoading(false);
-        setError(response.message || t("subscriber_login_error_credentials", "اسم المستخدم أو كلمة المرور غير صحيحة"));
+        const rawMsg = response.message || "";
+        if (rawMsg.includes("الحد الأقصى") || rawMsg.includes("الأجهزة") || rawMsg.toLowerCase().includes("device")) {
+          const match = rawMsg.match(/\((\d+)/);
+          const count = match ? match[1] : "1";
+          const template = t(
+            "subscriber_max_devices_warning",
+            "رسالة تحذير: لقد استنفدت الحد الأقصى المسموح به من الأجهزة ({count} جهاز). يرجى التواصل مع الإدارة لإعادة التعيين."
+          );
+          setError(template.replace("{count}", count));
+        } else {
+          setError(rawMsg || t("subscriber_login_error_credentials", "اسم المستخدم أو كلمة المرور غير صحيحة"));
+        }
       }
     } catch (err: any) {
       setIsLoading(false);
@@ -363,9 +374,9 @@ export default function SubscriberPortal({
                 </div>
 
                 {error && (
-                  <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs py-2.5 px-3 rounded-lg flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>{error}</span>
+                  <div className="bg-amber-500/15 border-2 border-amber-500/50 text-amber-200 text-xs py-3 px-3.5 rounded-xl flex items-start gap-2.5 shadow-lg shadow-amber-950/40 animate-in fade-in">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <span className="font-sans leading-relaxed text-yellow-300 font-semibold">{error}</span>
                   </div>
                 )}
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Image as ImageIcon, Play, ShoppingBag, Phone, HelpCircle, LogIn, Menu, X, Landmark, Globe, Sparkles, Settings, Users } from "lucide-react";
+import { BookOpen, Image as ImageIcon, Play, ShoppingBag, Phone, HelpCircle, LogIn, LogOut, Menu, X, Landmark, Globe, Sparkles, Settings, Users } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { ProfileData, SocialLinks, CustomTexts } from "../types";
 import { useLanguage } from "../context/LanguageContext";
@@ -215,9 +215,11 @@ export default function Header({
                 </button>
                 <button
                   onClick={onLogout}
-                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 px-3 py-2 rounded-full font-sans text-xs transition-colors"
+                  title={t("nav_logout", "تسجيل خروج المشترك")}
+                  aria-label={t("nav_logout", "تسجيل خروج المشترك")}
+                  className="bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 hover:border-rose-400 w-9 h-9 rounded-full font-sans transition-all flex items-center justify-center shadow-md cursor-pointer shrink-0 group"
                 >
-                  {t("nav_logout", "تسجيل خروج")}
+                  <LogOut className="w-4.5 h-4.5 group-hover:scale-110 transition-transform" />
                 </button>
               </div>
             ) : (
